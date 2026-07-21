@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -116,6 +116,20 @@ class DatabaseHelper {
         );
       }
     }
+    if (oldVersion < 5) {
+      // Mantemos todos os dados brutos para mapa/auditoria, mas guardamos
+      // também quais pontos passaram pelo filtro de quilometragem.
+      // Quem vem da v1 recebeu a tabela atual em `_criarTabelasCorrida`.
+      if (oldVersion >= 2) {
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN precisao_metros REAL');
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN velocidade_mps REAL');
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN direcao_graus REAL');
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN altitude_metros REAL');
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN precisao_velocidade_mps REAL');
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN localizacao_simulada INTEGER NOT NULL DEFAULT 0');
+        await db.execute('ALTER TABLE pontos_rota ADD COLUMN aceito_calculo INTEGER NOT NULL DEFAULT 1');
+      }
+    }
   }
 
   Future<void> _criarTabelasCorrida(Database db) async {
@@ -174,7 +188,14 @@ class DatabaseHelper {
         timestamp TEXT NOT NULL,
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
-        lancado_como_deslocamento INTEGER NOT NULL DEFAULT 0
+        lancado_como_deslocamento INTEGER NOT NULL DEFAULT 0,
+        precisao_metros REAL,
+        velocidade_mps REAL,
+        direcao_graus REAL,
+        altitude_metros REAL,
+        precisao_velocidade_mps REAL,
+        localizacao_simulada INTEGER NOT NULL DEFAULT 0,
+        aceito_calculo INTEGER NOT NULL DEFAULT 1
       )
     ''');
   }

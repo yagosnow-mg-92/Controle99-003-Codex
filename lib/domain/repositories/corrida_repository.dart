@@ -35,7 +35,11 @@ abstract class CorridaRepository {
   Future<void> vincularReceita(String corridaId, String receitaId);
 
   Future<void> registrarPontoRota(PontoRota ponto);
+  /// Pontos aprovados pelo filtro, usados no cálculo financeiro.
   Future<List<PontoRota>> pontosDaCorrida(String corridaId);
+  /// Traçado completo, inclusive pontos descartados no cálculo, para mapa e auditoria.
+  Future<List<PontoRota>> todosPontosDaCorrida(String corridaId);
+  Future<List<PontoRota>> todosPontosDaSessao(String sessaoId);
 
   Future<List<PontoRota>> pontosDeDeslocamentoNaoLancados(String sessaoId);
   Future<void> marcarPontosComoDeslocamentoLancado(List<String> pontoIds);

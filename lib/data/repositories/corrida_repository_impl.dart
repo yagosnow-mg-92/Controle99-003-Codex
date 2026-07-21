@@ -189,6 +189,13 @@ class CorridaRepositoryImpl implements CorridaRepository {
       'timestamp': ponto.timestamp.toIso8601String(),
       'latitude': ponto.latitude,
       'longitude': ponto.longitude,
+      'precisao_metros': ponto.precisaoMetros,
+      'velocidade_mps': ponto.velocidadeMetrosPorSegundo,
+      'direcao_graus': ponto.direcaoGraus,
+      'altitude_metros': ponto.altitudeMetros,
+      'precisao_velocidade_mps': ponto.precisaoVelocidadeMetrosPorSegundo,
+      'localizacao_simulada': ponto.localizacaoSimulada ? 1 : 0,
+      'aceito_calculo': ponto.aceitoNoCalculo ? 1 : 0,
     });
   }
 
@@ -197,8 +204,32 @@ class CorridaRepositoryImpl implements CorridaRepository {
     final db = await _dbHelper.database;
     final rows = await db.query(
       'pontos_rota',
+      where: 'corrida_id = ? AND aceito_calculo = 1',
+      whereArgs: [corridaId],
+      orderBy: 'timestamp ASC',
+    );
+    return rows.map(_pontoFromMap).toList();
+  }
+
+  @override
+  Future<List<PontoRota>> todosPontosDaCorrida(String corridaId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'pontos_rota',
       where: 'corrida_id = ?',
       whereArgs: [corridaId],
+      orderBy: 'timestamp ASC',
+    );
+    return rows.map(_pontoFromMap).toList();
+  }
+
+  @override
+  Future<List<PontoRota>> todosPontosDaSessao(String sessaoId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'pontos_rota',
+      where: 'sessao_id = ?',
+      whereArgs: [sessaoId],
       orderBy: 'timestamp ASC',
     );
     return rows.map(_pontoFromMap).toList();
@@ -287,6 +318,14 @@ class CorridaRepositoryImpl implements CorridaRepository {
       timestamp: DateTime.parse(map['timestamp'] as String),
       latitude: (map['latitude'] as num).toDouble(),
       longitude: (map['longitude'] as num).toDouble(),
+      precisaoMetros: (map['precisao_metros'] as num?)?.toDouble(),
+      velocidadeMetrosPorSegundo: (map['velocidade_mps'] as num?)?.toDouble(),
+      direcaoGraus: (map['direcao_graus'] as num?)?.toDouble(),
+      altitudeMetros: (map['altitude_metros'] as num?)?.toDouble(),
+      precisaoVelocidadeMetrosPorSegundo:
+          (map['precisao_velocidade_mps'] as num?)?.toDouble(),
+      localizacaoSimulada: (map['localizacao_simulada'] as int? ?? 0) == 1,
+      aceitoNoCalculo: (map['aceito_calculo'] as int? ?? 1) == 1,
     );
   }
 }

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geolocator_android/geolocator_android.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Resultado de uma solicitação de permissão de localização.
@@ -55,8 +57,8 @@ class GeolocalizacaoService {
     }
   }
 
-  /// Stream de posições, atualizando a cada 15 metros de deslocamento —
-  /// suficiente para desenhar a rota sem gravar pontos em excesso.
+  /// Stream de posições solicitado a cada segundo e após três metros de
+  /// deslocamento, para preservar curvas e gerar uma rota útil no mapa.
   ///
   /// A sobrevivência em segundo plano (o app não ser morto pelo Android
   /// com a tela apagada) é responsabilidade do `ForegroundTaskService`
@@ -64,10 +66,24 @@ class GeolocalizacaoService {
   /// ver `CorridaProvider._retomarRastreamento()`.
   Stream<Position> streamPosicao() {
     return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: configuracoesRastreamento,
+    );
+  }
+
+  /// Atualizações curtas preservam curvas e conversões. No Android, também
+  /// solicitamos explicitamente o intervalo de um segundo; fora dele, o
+  /// sistema usa ao menos o filtro espacial de três metros.
+  LocationSettings get configuracoesRastreamento {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 15,
-      ),
+        distanceFilter: 3,
+        intervalDuration: const Duration(seconds: 1),
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 3,
     );
   }
 

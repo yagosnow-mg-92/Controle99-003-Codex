@@ -43,6 +43,7 @@ class CorridaProvider extends ChangeNotifier {
   Timer? _timer;
   StreamSubscription<Position>? _posicaoSubscription;
   Position? _ultimaPosicaoConhecida;
+  PontoRota? _ultimoPontoAceito;
 
   /// Chamado uma vez quando a tela Corrida é aberta pela primeira vez.
   /// Restaura o estado caso o motociclista tenha ficado online e o app
@@ -85,17 +86,79 @@ class CorridaProvider extends ChangeNotifier {
     _posicaoSubscription?.cancel();
     _posicaoSubscription = _geo.streamPosicao().listen((posicao) async {
       _ultimaPosicaoConhecida = posicao;
-      if (sessaoAtual == null) return;
-
-      await _repository.registrarPontoRota(PontoRota(
-        id: _uuid.v4(),
-        sessaoId: sessaoAtual!.id,
-        corridaId: corridaAtual?.id,
-        timestamp: DateTime.now(),
-        latitude: posicao.latitude,
-        longitude: posicao.longitude,
-      ));
+      await _registrarPosicao(posicao);
     });
+  }
+
+  /// Salva todos os pontos para o mapa, mas marca apenas os confiáveis para a
+  /// distância financeira. Assim, sinal ruim não infla o odômetro e continua
+  /// disponível para diagnóstico futuro.
+  Future<void> _registrarPosicao(Position posicao, {bool obrigatorio = false}) async {
+    final sessao = sessaoAtual;
+    if (sessao == null) return;
+
+    final agora = DateTime.now();
+    final aceito = _deveAceitarNoCalculo(posicao, agora, obrigatorio: obrigatorio);
+    final ponto = PontoRota(
+      id: _uuid.v4(),
+      sessaoId: sessao.id,
+      corridaId: corridaAtual?.id,
+      timestamp: agora,
+      latitude: posicao.latitude,
+      longitude: posicao.longitude,
+      precisaoMetros: posicao.accuracy,
+      velocidadeMetrosPorSegundo: posicao.speed,
+      direcaoGraus: posicao.heading,
+      altitudeMetros: posicao.altitude,
+      precisaoVelocidadeMetrosPorSegundo: posicao.speedAccuracy,
+      localizacaoSimulada: posicao.isMocked,
+      aceitoNoCalculo: aceito,
+    );
+    await _repository.registrarPontoRota(ponto);
+    if (aceito) _ultimoPontoAceito = ponto;
+  }
+
+  bool _deveAceitarNoCalculo(
+    Position posicao,
+    DateTime agora, {
+    required bool obrigatorio,
+  }) {
+    if (posicao.isMocked || posicao.accuracy > 20) return false;
+
+    final anterior = _ultimoPontoAceito;
+    if (anterior == null || obrigatorio) return true;
+
+    final metros = Geolocator.distanceBetween(
+      anterior.latitude,
+      anterior.longitude,
+      posicao.latitude,
+      posicao.longitude,
+    );
+    final segundos = agora.difference(anterior.timestamp).inMilliseconds / 1000;
+    if (segundos <= 0) return false;
+
+    final velocidadeCalculada = metros / segundos;
+    if (velocidadeCalculada > 55) return false;
+
+    final emMovimento = posicao.speed >= 1 || velocidadeCalculada >= 1.4;
+    final mudouDirecao = _diferencaAngular(posicao.heading, anterior.direcaoGraus) >= 30;
+    return (metros >= 5 && emMovimento) ||
+        (segundos >= 3 && emMovimento) ||
+        (metros >= 3 && mudouDirecao && emMovimento);
+  }
+
+  double _diferencaAngular(double atual, double? anterior) {
+    if (anterior == null || atual < 0 || anterior < 0) return 0;
+    final diferenca = (atual - anterior).abs() % 360;
+    return diferenca > 180 ? 360 - diferenca : diferenca;
+  }
+
+  Future<void> _registrarPosicaoAtualObrigatoria() async {
+    final posicao = await _geo.posicaoAtual();
+    if (posicao != null) {
+      _ultimaPosicaoConhecida = posicao;
+      await _registrarPosicao(posicao, obrigatorio: true);
+    }
   }
 
   Future<({double? lat, double? lng, String? rua, String? bairro})> _capturarLocalizacao() async {
@@ -145,10 +208,12 @@ class CorridaProvider extends ChangeNotifier {
 
     final sessao = await _repository.criarSessao(DateTime.now());
     sessaoAtual = sessao;
+    _ultimoPontoAceito = null;
     tempoDecorrido = Duration.zero;
 
     await _registrarEvento(sessao.id, TipoEvento.ficouOnline);
     await _retomarRastreamento();
+    await _registrarPosicaoAtualObrigatoria();
 
     processando = false;
     notifyListeners();
@@ -182,6 +247,7 @@ class CorridaProvider extends ChangeNotifier {
     if (enderecoInicio != null) {
       await _repository.atualizarLocalEmbarque(corrida.id, enderecoInicio);
     }
+    await _registrarPosicaoAtualObrigatoria();
 
     await _repository.atualizarStatusSessao(sessaoAtual!.id, StatusSessao.corridaIniciada);
     sessaoAtual = sessaoAtual!.copyWith(status: StatusSessao.corridaIniciada);
@@ -200,6 +266,7 @@ class CorridaProvider extends ChangeNotifier {
     processando = true;
     notifyListeners();
 
+    await _registrarPosicaoAtualObrigatoria();
     await _registrarEvento(sessaoAtual!.id, TipoEvento.cancelouCorrida);
     final enderecoFim = enderecoAtual;
 
@@ -268,6 +335,7 @@ class CorridaProvider extends ChangeNotifier {
     processando = true;
     notifyListeners();
 
+    await _registrarPosicaoAtualObrigatoria();
     await _registrarEvento(sessaoAtual!.id, TipoEvento.finalizouCorrida);
     final enderecoFim = enderecoAtual;
 
@@ -310,6 +378,7 @@ class CorridaProvider extends ChangeNotifier {
     processando = true;
     notifyListeners();
 
+    await _registrarPosicaoAtualObrigatoria();
     // Se a sessão terminou sem corrida (ou entre duas corridas), registra o
     // que foi rodado procurando trabalho como um lançamento de valor zero.
     if (status == StatusSessao.online) {
@@ -324,6 +393,7 @@ class CorridaProvider extends ChangeNotifier {
 
     sessaoAtual = null;
     corridaAtual = null;
+    _ultimoPontoAceito = null;
     tempoDecorrido = Duration.zero;
 
     processando = false;
@@ -348,7 +418,10 @@ class CorridaProvider extends ChangeNotifier {
     if (pontos.isEmpty) return;
 
     final km = _arredondarKmGps(_geo.distanciaTotalKm(
-      pontos.map((p) => (latitude: p.latitude, longitude: p.longitude)).toList(),
+      pontos
+          .where((p) => p.aceitoNoCalculo)
+          .map((p) => (latitude: p.latitude, longitude: p.longitude))
+          .toList(),
     ));
 
     // Mesmo sem distância calculável (por exemplo, só um ponto de GPS), os
