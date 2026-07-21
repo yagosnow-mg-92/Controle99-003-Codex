@@ -1,0 +1,195 @@
+name: Build APK
+
+# Roda a cada push/PR na main (para validar) e sempre que uma tag de
+# versão (ex: v1.0.0) for criada, publicando o APK como Release.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  FLUTTER_VERSION: '3.44.0'
+
+jobs:
+  build:
+    name: Build APK (release)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Gerar plataforma Android (se ainda não existir)
+        run: |
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android --org com.motogestor.app --project-name moto_gestor .
+          fi
+
+      - name: Configurar permissões de GPS (feature Corrida)
+        run: python3 scripts/configurar_permissoes.py
+
+      - name: Verificar permissões de GPS configuradas
+        run: |
+          if ! grep -q "ACCESS_BACKGROUND_LOCATION" android/app/src/main/AndroidManifest.xml; then
+            echo "ERRO: permissões de localização não foram aplicadas ao AndroidManifest.xml."
+            cat android/app/src/main/AndroidManifest.xml
+            exit 1
+          fi
+          echo "AndroidManifest.xml OK: permissões de localização presentes."
+
+      - name: Forçar compileSdk alto em todos os subprojetos (app + plugins)
+        run: |
+          python3 scripts/configurar_compile_sdk.py
+          echo ""
+          echo "===== CONTEÚDO DO android/build.gradle(.kts) RAIZ ====="
+          if [ -f "android/build.gradle.kts" ]; then
+            cat android/build.gradle.kts
+          else
+            cat android/build.gradle
+          fi
+          echo "===== FIM DO ARQUIVO ====="
+
+      - name: Configurar assinatura de release
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release.keystore
+          EOF
+          # Injeta a leitura do key.properties e a signingConfig de release
+          # no build.gradle gerado pelo `flutter create`, garantindo que
+          # toda build use a MESMA assinatura — isso é o que permite
+          # atualizar o app sem precisar desinstalar.
+          python3 scripts/configurar_assinatura.py
+
+      - name: Verificar assinatura configurada (falha o build se não bateu)
+        run: |
+          echo "--- Verificando keystore ---"
+          KEYSTORE_SIZE=$(stat -c%s android/app/release.keystore 2>/dev/null || echo 0)
+          if [ "$KEYSTORE_SIZE" -lt 100 ]; then
+            echo "ERRO: android/app/release.keystore está vazio ou não foi criado (tamanho: $KEYSTORE_SIZE bytes)."
+            echo "Isso normalmente significa que o secret ANDROID_KEYSTORE_BASE64 está vazio, incompleto ou ausente."
+            exit 1
+          fi
+          echo "Keystore OK ($KEYSTORE_SIZE bytes)."
+
+          echo "--- Fingerprint da assinatura desta build ---"
+          echo "(compare esse valor entre builds diferentes — tem que ser SEMPRE IGUAL)"
+          keytool -list -v -keystore android/app/release.keystore \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" 2>&1 | grep "SHA256:" || {
+              echo "ERRO: não foi possível ler a keystore com a senha informada (ANDROID_KEYSTORE_PASSWORD)."
+              exit 1
+            }
+
+          echo "--- Verificando build.gradle ---"
+          if [ -f "android/app/build.gradle.kts" ]; then
+            GRADLE_FILE="android/app/build.gradle.kts"
+            PADRAO='signingConfig *= *signingConfigs\.getByName\("release"\)'
+          else
+            GRADLE_FILE="android/app/build.gradle"
+            PADRAO='signingConfig *=? *signingConfigs\.release'
+          fi
+
+          if ! grep -qE "$PADRAO" "$GRADLE_FILE"; then
+            echo "ERRO: $GRADLE_FILE NÃO está apontando para a signingConfig de release."
+            echo "O script configurar_assinatura.py não conseguiu aplicar a alteração."
+            echo "----- $GRADLE_FILE atual -----"
+            cat "$GRADLE_FILE"
+            exit 1
+          fi
+          echo "$GRADLE_FILE OK: usando signingConfig de release."
+
+          echo "--- Código de versão desta build ---"
+          echo "versionCode = ${{ github.run_number }} (sempre crescente, evita o erro de 'conflito' em reinstalações)"
+
+          echo ""
+          echo "===== CONTEÚDO COMPLETO DE $GRADLE_FILE ====="
+          cat "$GRADLE_FILE"
+          echo "===== FIM DO ARQUIVO ====="
+
+      - name: Instalar dependências
+        run: flutter pub get
+
+      - name: Analisar código
+        run: flutter analyze --no-fatal-infos || true
+
+      - name: Build APK release
+        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
+
+      - name: Build APK universal (fallback)
+        run: flutter build apk --release --build-number=${{ github.run_number }}
+
+      - name: Verificar assinatura do APK final gerado
+        run: |
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+
+          # keytool -printcert só entende o esquema antigo de assinatura
+          # (v1/JAR). APKs modernos usam v2/v3 por padrão, que keytool
+          # não lê (por isso "Not a signed jar file" mesmo com o APK
+          # assinado corretamente). A ferramenta certa pra isso é o
+          # apksigner, do próprio Android SDK.
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name "apksigner" | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERRO: não encontrei o apksigner no Android SDK ($ANDROID_HOME/build-tools)."
+            exit 1
+          fi
+          echo "Usando: $APKSIGNER"
+
+          echo "--- Verificando assinatura do APK final ($APK) ---"
+          "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/cert_apk.txt
+
+          echo ""
+          echo "--- Comparando com o certificado da keystore usada ---"
+          keytool -list -v -keystore android/app/release.keystore \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" | tee /tmp/cert_keystore.txt
+
+          # Normaliza os dois (remove espaços/dois-pontos, deixa minúsculo)
+          # já que apksigner e keytool formatam o hash de jeitos diferentes.
+          SHA_APK=$(grep -i "SHA-256 digest" /tmp/cert_apk.txt | head -1 | sed 's/.*://' | tr -d ' :' | tr 'A-Z' 'a-z')
+          SHA_KEYSTORE=$(grep "SHA256:" /tmp/cert_keystore.txt | head -1 | sed 's/.*SHA256://' | tr -d ' :' | tr 'A-Z' 'a-z')
+
+          echo ""
+          echo "APK:      $SHA_APK"
+          echo "Keystore: $SHA_KEYSTORE"
+
+          if [ -z "$SHA_APK" ] || [ "$SHA_APK" != "$SHA_KEYSTORE" ]; then
+            echo "ERRO CRÍTICO: o APK final NÃO foi assinado com a keystore configurada!"
+            exit 1
+          fi
+          echo ""
+          echo "CONFIRMADO: o APK final está assinado com a keystore correta."
+
+      - name: Upload do APK como artefato do build
+        uses: actions/upload-artifact@v4
+        with:
+          name: moto-gestor-apk
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+      - name: Criar Release com o APK (somente em tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
