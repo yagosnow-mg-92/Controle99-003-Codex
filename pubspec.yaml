@@ -40,7 +40,6 @@ dependencies:
   # 11.x só ocorria em Flutter anterior à 3.27 — já não se aplica mais
   # agora que o workflow usa Flutter 3.44.
   geolocator: ^13.0.2
-  geolocator_android: ^4.6.0
   geocoding: ^3.0.0
   permission_handler: ^11.3.1
   flutter_foreground_task: ^8.10.4

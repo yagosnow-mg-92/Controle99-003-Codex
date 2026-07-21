@@ -434,6 +434,20 @@ class CorridaProvider extends ChangeNotifier {
     final agora = DateTime.now();
     final receitaId = _uuid.v4();
     final deslocamentoId = _uuid.v4();
+
+    // Embarque = onde o trecho começou (ficar online, ou fim da corrida
+    // anterior); destino = onde terminou (iniciar corrida, ou ficar
+    // offline). Usamos as coordenadas do primeiro/último ponto GPS
+    // gravados nesse trecho, já que representam exatamente esses momentos.
+    final enderecoInicio = await _geo.enderecoDe(pontos.first.latitude, pontos.first.longitude);
+    final enderecoFim = await _geo.enderecoDe(pontos.last.latitude, pontos.last.longitude);
+    final localEmbarque = [enderecoInicio.rua, enderecoInicio.bairro]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(', ');
+    final localDestino = [enderecoFim.rua, enderecoFim.bairro]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(', ');
+
     await _receitaRepository.salvar(Receita(
       id: receitaId,
       data: agora,
@@ -442,6 +456,8 @@ class CorridaProvider extends ChangeNotifier {
       observacao: 'Deslocamento livre — lançado automaticamente pelo GPS',
       criadoEm: agora,
       tipo: TipoReceita.deslocamentoLivre,
+      localEmbarque: localEmbarque.isEmpty ? null : localEmbarque,
+      localDestino: localDestino.isEmpty ? null : localDestino,
     ));
     await _repository.salvarDeslocamentoLivre(
       id: deslocamentoId,

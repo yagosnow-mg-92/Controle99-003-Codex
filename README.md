@@ -50,6 +50,7 @@ funcionar direto por cima, sem perder dados nunca mais.
 - [x] Dashboard: período configurável (Dia/Semana/Mês/Personalizado, salvo) + gráfico com eixos, linha reta e valores visíveis
 - [x] Modo **Corrida**: lançamento automático de receita via GPS (online → corrida → passageiro → finalizar), com rastreamento em segundo plano
 - [x] Local de embarque/destino (automático via Corrida, opcional em lançamentos manuais) + menu "Mais" (Indicadores/Configurações) + revisão de contraste
+- [x] Tipo de lançamento (Corrida/Deslocamento livre/Outro), km GPS arredondado, lançamento separado de deslocamento sem corrida (com endereço), visualizar/editar lançamento (duplo toque)
 
 ## Modo Corrida (rastreamento por GPS)
 
