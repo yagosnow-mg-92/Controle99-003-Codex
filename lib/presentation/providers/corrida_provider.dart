@@ -426,12 +426,16 @@ class CorridaProvider extends ChangeNotifier {
 
     // Mesmo sem distância calculável (por exemplo, só um ponto de GPS), os
     // pontos são consumidos para não se misturarem ao próximo deslocamento.
-    await _repository.marcarPontosComoDeslocamentoLancado(pontos.map((p) => p.id).toList());
-    if (km == 0) return;
+    if (km == 0) {
+      await _repository.marcarPontosComoDeslocamentoLancado(pontos.map((p) => p.id).toList());
+      return;
+    }
 
     final agora = DateTime.now();
+    final receitaId = _uuid.v4();
+    final deslocamentoId = _uuid.v4();
     await _receitaRepository.salvar(Receita(
-      id: _uuid.v4(),
+      id: receitaId,
       data: agora,
       kmRodados: km,
       valorRecebido: 0,
@@ -439,6 +443,18 @@ class CorridaProvider extends ChangeNotifier {
       criadoEm: agora,
       tipo: TipoReceita.deslocamentoLivre,
     ));
+    await _repository.salvarDeslocamentoLivre(
+      id: deslocamentoId,
+      sessaoId: sessao.id,
+      inicio: pontos.first.timestamp,
+      fim: pontos.last.timestamp,
+      kmPercorrido: km,
+      receitaId: receitaId,
+    );
+    await _repository.vincularPontosAoDeslocamento(
+      pontos.map((p) => p.id).toList(),
+      deslocamentoId,
+    );
   }
 
   /// O GPS pode produzir muitas casas decimais. Mantemos precisão de metros

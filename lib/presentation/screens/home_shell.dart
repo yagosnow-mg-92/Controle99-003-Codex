@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'corrida/corrida_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'despesas/despesas_screen.dart';
 import 'mais/mais_screen.dart';
 import 'receita/receita_screen.dart';
+import '../providers/dashboard_provider.dart';
+import '../providers/receita_provider.dart';
 
 /// Casca de navegação principal. Mantém as áreas do app acessíveis
 /// por uma barra inferior, seguindo o padrão Material 3.
@@ -32,7 +35,13 @@ class _HomeShellState extends State<HomeShell> {
       body: IndexedStack(index: _index, children: _telas),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) async {
+          setState(() => _index = i);
+          // As telas ficam vivas no IndexedStack. Recarrega ao entrar para
+          // mostrar também lançamentos automáticos feitos fora delas.
+          if (i == 0) await context.read<DashboardProvider>().carregar();
+          if (i == 2) await context.read<ReceitaProvider>().carregar();
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_rounded), label: 'Painel'),
           NavigationDestination(icon: Icon(Icons.two_wheeler_rounded), label: 'Corrida'),

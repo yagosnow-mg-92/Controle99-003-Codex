@@ -43,6 +43,16 @@ abstract class CorridaRepository {
 
   Future<List<PontoRota>> pontosDeDeslocamentoNaoLancados(String sessaoId);
   Future<void> marcarPontosComoDeslocamentoLancado(List<String> pontoIds);
+  Future<void> salvarDeslocamentoLivre({
+    required String id,
+    required String sessaoId,
+    required DateTime inicio,
+    required DateTime fim,
+    required double kmPercorrido,
+    required String receitaId,
+  });
+  Future<void> vincularPontosAoDeslocamento(List<String> pontoIds, String deslocamentoId);
+  Future<List<PontoRota>> pontosDoDeslocamentoPorReceita(String receitaId);
 
   /// Lista as sessões já encerradas, mais recentes primeiro — base para
   /// os relatórios futuros mencionados pelo usuário.

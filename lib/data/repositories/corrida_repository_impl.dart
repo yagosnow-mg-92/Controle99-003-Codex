@@ -248,6 +248,26 @@ class CorridaRepositoryImpl implements CorridaRepository {
   }
 
   @override
+  Future<void> salvarDeslocamentoLivre({
+    required String id,
+    required String sessaoId,
+    required DateTime inicio,
+    required DateTime fim,
+    required double kmPercorrido,
+    required String receitaId,
+  }) async {
+    final db = await _dbHelper.database;
+    await db.insert('deslocamentos_livres', {
+      'id': id,
+      'sessao_id': sessaoId,
+      'inicio': inicio.toIso8601String(),
+      'fim': fim.toIso8601String(),
+      'km_percorrido': kmPercorrido,
+      'receita_id': receitaId,
+    });
+  }
+
+  @override
   Future<void> marcarPontosComoDeslocamentoLancado(List<String> pontoIds) async {
     if (pontoIds.isEmpty) return;
     final db = await _dbHelper.database;
@@ -258,6 +278,31 @@ class CorridaRepositoryImpl implements CorridaRepository {
       where: 'id IN ($marcadores)',
       whereArgs: pontoIds,
     );
+  }
+
+  @override
+  Future<void> vincularPontosAoDeslocamento(List<String> pontoIds, String deslocamentoId) async {
+    if (pontoIds.isEmpty) return;
+    final db = await _dbHelper.database;
+    final marcadores = List.filled(pontoIds.length, '?').join(', ');
+    await db.update(
+      'pontos_rota',
+      {'lancado_como_deslocamento': 1, 'deslocamento_id': deslocamentoId},
+      where: 'id IN ($marcadores)',
+      whereArgs: pontoIds,
+    );
+  }
+
+  @override
+  Future<List<PontoRota>> pontosDoDeslocamentoPorReceita(String receitaId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'pontos_rota',
+      where: 'deslocamento_id = (SELECT id FROM deslocamentos_livres WHERE receita_id = ?)',
+      whereArgs: [receitaId],
+      orderBy: 'timestamp ASC',
+    );
+    return rows.map(_pontoFromMap).toList();
   }
 
   @override

@@ -119,13 +119,21 @@ class _CorridaScreenState extends State<CorridaScreen> {
       case StatusSessao.offline:
         return _TelaOffline(provider: provider);
       case StatusSessao.online:
-        return _TelaOnline(provider: provider, formatarDuracao: _formatarDuracao, onIniciarCorrida: () async {
-          final valor = await _pedirValor(
-            titulo: 'Valor da corrida',
-            mensagem: 'Informe o valor combinado para essa corrida.',
-          );
-          if (valor != null) await provider.iniciarCorrida(valor);
-        });
+        return _TelaOnline(
+          provider: provider,
+          formatarDuracao: _formatarDuracao,
+          onIniciarCorrida: () async {
+            final valor = await _pedirValor(
+              titulo: 'Valor da corrida',
+              mensagem: 'Informe o valor combinado para essa corrida.',
+            );
+            if (valor != null) await provider.iniciarCorrida(valor);
+          },
+          onFicarOffline: () async {
+            await provider.ficarOffline();
+            await _atualizarReceitaEDashboard();
+          },
+        );
       case StatusSessao.corridaIniciada:
         return _TelaCorridaIniciada(
           provider: provider,
@@ -310,11 +318,13 @@ class _TelaOnline extends StatelessWidget {
   final CorridaProvider provider;
   final String Function(Duration) formatarDuracao;
   final VoidCallback onIniciarCorrida;
+  final VoidCallback onFicarOffline;
 
   const _TelaOnline({
     required this.provider,
     required this.formatarDuracao,
     required this.onIniciarCorrida,
+    required this.onFicarOffline,
   });
 
   @override
@@ -342,7 +352,7 @@ class _TelaOnline extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: provider.processando ? null : provider.ficarOffline,
+            onPressed: provider.processando ? null : onFicarOffline,
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 18),
               side: const BorderSide(color: AppColors.border),
