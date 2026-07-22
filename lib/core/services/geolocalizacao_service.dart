@@ -4,6 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geolocator_android/geolocator_android.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../domain/entities/ponto_rota.dart';
+
 /// Resultado de uma solicitação de permissão de localização.
 enum ResultadoPermissao { concedida, negada, negadaPermanente, servicoDesligado }
 
@@ -114,6 +116,59 @@ class GeolocalizacaoService {
         pontos[i].longitude,
       );
     }
+    return totalMetros / 1000;
+  }
+
+  /// Recalcula a distância a partir da trilha bruta gravada.
+  ///
+  /// O desenho do mapa sempre usa todos os pontos, mas o filtro antigo de
+  /// [`PontoRota.aceitoNoCalculo`] era deliberadamente rígido (20 m de
+  /// precisão) e podia retirar trechos inteiros da soma. Aqui cada segmento é
+  /// validado novamente: toleramos a precisão urbana normal, mas descartamos
+  /// localização simulada, leituras muito imprecisas e saltos incompatíveis
+  /// com uma moto. Isso mantém o odômetro alinhado ao trajeto exibido sem
+  /// somar ruído de GPS parado.
+  double distanciaDaTrilhaKm(List<PontoRota> pontos) {
+    if (pontos.length < 2) return 0;
+
+    const precisaoMaximaMetros = 50.0;
+    const velocidadeMaximaMetrosPorSegundo = 55.0; // 198 km/h.
+    const deslocamentoMinimoMetros = 3.0;
+
+    PontoRota? anterior;
+    double totalMetros = 0;
+
+    for (final ponto in pontos) {
+      final precisao = ponto.precisaoMetros;
+      if (ponto.localizacaoSimulada ||
+          (precisao != null && precisao > precisaoMaximaMetros)) {
+        continue;
+      }
+
+      if (anterior == null) {
+        anterior = ponto;
+        continue;
+      }
+
+      final segundos = ponto.timestamp.difference(anterior.timestamp).inMilliseconds / 1000;
+      if (segundos <= 0) continue;
+
+      final metros = Geolocator.distanceBetween(
+        anterior.latitude,
+        anterior.longitude,
+        ponto.latitude,
+        ponto.longitude,
+      );
+      final velocidade = metros / segundos;
+
+      // Não move a referência quando a leitura é um salto: o próximo ponto
+      // válido ainda poderá ser ligado ao último ponto confiável.
+      if (velocidade > velocidadeMaximaMetrosPorSegundo) continue;
+
+      if (metros >= deslocamentoMinimoMetros) totalMetros += metros;
+      anterior = ponto;
+    }
+
     return totalMetros / 1000;
   }
 }

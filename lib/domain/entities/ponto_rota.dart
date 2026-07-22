@@ -1,8 +1,9 @@
 /// Um ponto de GPS gravado durante a sessão. `corridaId` fica nulo
 /// enquanto o motociclista está apenas "online" (procurando corrida) e
 /// preenchido quando existe uma corrida em andamento. Todos os pontos brutos
-/// são preservados para desenhar o mapa no futuro; `aceitoNoCalculo` indica
-/// se o ponto passou pelos filtros usados na quilometragem financeira.
+/// são preservados para desenhar o mapa no futuro; `aceitoNoCalculo` registra
+/// se o ponto passou pelo filtro rápido de telemetria. A quilometragem final
+/// é recalculada com validação de segmentos da trilha bruta.
 class PontoRota {
   final String id;
   final String sessaoId;

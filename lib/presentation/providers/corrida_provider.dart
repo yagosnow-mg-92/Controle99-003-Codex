@@ -90,9 +90,10 @@ class CorridaProvider extends ChangeNotifier {
     });
   }
 
-  /// Salva todos os pontos para o mapa, mas marca apenas os confiáveis para a
-  /// distância financeira. Assim, sinal ruim não infla o odômetro e continua
-  /// disponível para diagnóstico futuro.
+  /// Salva todos os pontos para o mapa e marca os que passam no filtro rápido
+  /// de telemetria. A quilometragem é recalculada ao finalizar usando a
+  /// trilha bruta e validação de cada segmento, para que um ponto menos
+  /// preciso não elimine um trecho inteiro da corrida.
   Future<void> _registrarPosicao(Position posicao, {bool obrigatorio = false}) async {
     final sessao = sessaoAtual;
     if (sessao == null) return;
@@ -407,10 +408,11 @@ class CorridaProvider extends ChangeNotifier {
   }
 
   Future<double> _calcularKmDaCorrida(String corridaId) async {
-    final pontos = await _repository.pontosDaCorrida(corridaId);
-    return _arredondarKmGps(_geo.distanciaTotalKm(
-      pontos.map((p) => (latitude: p.latitude, longitude: p.longitude)).toList(),
-    ));
+    // O mapa mostra a trilha bruta. Recalculamos usando essa mesma trilha,
+    // com uma validação de segmentos tolerante a GPS urbano, para não haver
+    // quilômetros visíveis no mapa que desaparecem do lançamento financeiro.
+    final pontos = await _repository.todosPontosDaCorrida(corridaId);
+    return _arredondarKmGps(_geo.distanciaDaTrilhaKm(pontos));
   }
 
   /// Cria um lançamento separado para o trecho percorrido online sem uma
@@ -427,12 +429,7 @@ class CorridaProvider extends ChangeNotifier {
     final pontos = await _repository.pontosDeDeslocamentoNaoLancados(sessao.id);
     if (pontos.isEmpty) return;
 
-    final km = _arredondarKmGps(_geo.distanciaTotalKm(
-      pontos
-          .where((p) => p.aceitoNoCalculo)
-          .map((p) => (latitude: p.latitude, longitude: p.longitude))
-          .toList(),
-    ));
+    final km = _arredondarKmGps(_geo.distanciaDaTrilhaKm(pontos));
 
     final agora = DateTime.now();
     final receitaId = _uuid.v4();

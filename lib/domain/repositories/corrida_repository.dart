@@ -35,7 +35,7 @@ abstract class CorridaRepository {
   Future<void> vincularReceita(String corridaId, String receitaId);
 
   Future<void> registrarPontoRota(PontoRota ponto);
-  /// Pontos aprovados pelo filtro, usados no cálculo financeiro.
+  /// Pontos aprovados pelo filtro rápido de telemetria.
   Future<List<PontoRota>> pontosDaCorrida(String corridaId);
   /// Traçado completo, inclusive pontos descartados no cálculo, para mapa e auditoria.
   Future<List<PontoRota>> todosPontosDaCorrida(String corridaId);
