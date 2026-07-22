@@ -272,9 +272,10 @@ class CorridaProvider extends ChangeNotifier {
 
     final km = await _calcularKmDaCorrida(corridaAtual!.id);
     await _repository.atualizarValorCorrida(corridaAtual!.id, valorTaxa, cancelada: true);
+    final horaFimCorrida = DateTime.now();
     await _repository.finalizarCorrida(
       corridaAtual!.id,
-      DateTime.now(),
+      horaFimCorrida,
       km,
       localDestino: enderecoFim,
     );
@@ -290,6 +291,8 @@ class CorridaProvider extends ChangeNotifier {
       localEmbarque: corridaAtual!.localEmbarque,
       localDestino: enderecoFim,
       tipo: TipoReceita.corrida,
+      horaInicio: corridaAtual!.horaInicio,
+      horaFim: horaFimCorrida,
     );
     await _receitaRepository.salvar(receita);
     await _repository.vincularReceita(corridaAtual!.id, receitaId);
@@ -340,9 +343,10 @@ class CorridaProvider extends ChangeNotifier {
     final enderecoFim = enderecoAtual;
 
     final km = await _calcularKmDaCorrida(corridaAtual!.id);
+    final horaFimCorrida = DateTime.now();
     await _repository.finalizarCorrida(
       corridaAtual!.id,
-      DateTime.now(),
+      horaFimCorrida,
       km,
       localDestino: enderecoFim,
     );
@@ -358,6 +362,8 @@ class CorridaProvider extends ChangeNotifier {
       localEmbarque: corridaAtual!.localEmbarque,
       localDestino: enderecoFim,
       tipo: TipoReceita.corrida,
+      horaInicio: corridaAtual!.horaInicio,
+      horaFim: horaFimCorrida,
     );
     await _receitaRepository.salvar(receita);
     await _repository.vincularReceita(corridaAtual!.id, receitaId);
@@ -410,6 +416,10 @@ class CorridaProvider extends ChangeNotifier {
   /// Cria um lançamento separado para o trecho percorrido online sem uma
   /// corrida em andamento. Os pontos são marcados depois para que nunca sejam
   /// incluídos outra vez no próximo trecho livre da mesma sessão.
+  ///
+  /// Sempre cria o lançamento, mesmo com km = 0 (motociclista ficou parado
+  /// esperando corrida) — esse tempo parado é um dado valioso para
+  /// relatórios futuros, então não pode ser descartado silenciosamente.
   Future<void> _lancarDeslocamentoLivreSeNecessario() async {
     final sessao = sessaoAtual;
     if (sessao == null) return;
@@ -424,13 +434,6 @@ class CorridaProvider extends ChangeNotifier {
           .toList(),
     ));
 
-    // Mesmo sem distância calculável (por exemplo, só um ponto de GPS), os
-    // pontos são consumidos para não se misturarem ao próximo deslocamento.
-    if (km == 0) {
-      await _repository.marcarPontosComoDeslocamentoLancado(pontos.map((p) => p.id).toList());
-      return;
-    }
-
     final agora = DateTime.now();
     final receitaId = _uuid.v4();
     final deslocamentoId = _uuid.v4();
@@ -439,8 +442,12 @@ class CorridaProvider extends ChangeNotifier {
     // anterior); destino = onde terminou (iniciar corrida, ou ficar
     // offline). Usamos as coordenadas do primeiro/último ponto GPS
     // gravados nesse trecho, já que representam exatamente esses momentos.
+    // Se ficou parado (km = 0), o destino é o mesmo local do embarque —
+    // não precisa geocodificar de novo.
     final enderecoInicio = await _geo.enderecoDe(pontos.first.latitude, pontos.first.longitude);
-    final enderecoFim = await _geo.enderecoDe(pontos.last.latitude, pontos.last.longitude);
+    final enderecoFim = km == 0
+        ? enderecoInicio
+        : await _geo.enderecoDe(pontos.last.latitude, pontos.last.longitude);
     final localEmbarque = [enderecoInicio.rua, enderecoInicio.bairro]
         .where((s) => s != null && s.isNotEmpty)
         .join(', ');
@@ -453,11 +460,15 @@ class CorridaProvider extends ChangeNotifier {
       data: agora,
       kmRodados: km,
       valorRecebido: 0,
-      observacao: 'Deslocamento livre — lançado automaticamente pelo GPS',
+      observacao: km == 0
+          ? 'Parado aguardando corrida — lançado automaticamente pelo GPS'
+          : 'Deslocamento livre — lançado automaticamente pelo GPS',
       criadoEm: agora,
       tipo: TipoReceita.deslocamentoLivre,
       localEmbarque: localEmbarque.isEmpty ? null : localEmbarque,
       localDestino: localDestino.isEmpty ? null : localDestino,
+      horaInicio: pontos.first.timestamp,
+      horaFim: pontos.last.timestamp,
     ));
     await _repository.salvarDeslocamentoLivre(
       id: deslocamentoId,

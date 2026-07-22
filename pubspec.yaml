@@ -44,6 +44,11 @@ dependencies:
   permission_handler: ^11.3.1
   flutter_foreground_task: ^8.10.4
 
+  # Mapa do trajeto (botão "Mapa" nos lançamentos vindos do GPS).
+  # Usa OpenStreetMap via flutter_map — não precisa de chave de API.
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

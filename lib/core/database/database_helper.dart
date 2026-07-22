@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -40,7 +40,9 @@ class DatabaseHelper {
         criado_em TEXT NOT NULL,
         local_embarque TEXT,
         local_destino TEXT,
-        tipo TEXT NOT NULL DEFAULT 'outro'
+        tipo TEXT NOT NULL DEFAULT 'outro',
+        hora_inicio TEXT,
+        hora_fim TEXT
       )
     ''');
 
@@ -133,6 +135,14 @@ class DatabaseHelper {
     if (oldVersion < 6 && oldVersion >= 2) {
       await db.execute('ALTER TABLE pontos_rota ADD COLUMN deslocamento_id TEXT');
       await _criarTabelaDeslocamentosLivres(db);
+    }
+    if (oldVersion < 7) {
+      // Hora de início/fim de cada lançamento gerado via GPS (corrida ou
+      // deslocamento livre), usadas em relatórios futuros de tempo parado
+      // e no botão de mapa. Lançamentos manuais ficam com esses campos
+      // nulos — não têm um trajeto de GPS associado.
+      await db.execute('ALTER TABLE receitas ADD COLUMN hora_inicio TEXT');
+      await db.execute('ALTER TABLE receitas ADD COLUMN hora_fim TEXT');
     }
   }
 

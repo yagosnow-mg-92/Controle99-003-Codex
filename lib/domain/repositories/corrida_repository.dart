@@ -54,6 +54,11 @@ abstract class CorridaRepository {
   Future<void> vincularPontosAoDeslocamento(List<String> pontoIds, String deslocamentoId);
   Future<List<PontoRota>> pontosDoDeslocamentoPorReceita(String receitaId);
 
+  /// Pontos de rota de uma CORRIDA a partir do id da receita gerada por
+  /// ela — usado pelo botão de mapa na tela de Receita, que só tem o id
+  /// da receita em mãos, não o da corrida.
+  Future<List<PontoRota>> pontosDaCorridaPorReceita(String receitaId);
+
   /// Lista as sessões já encerradas, mais recentes primeiro — base para
   /// os relatórios futuros mencionados pelo usuário.
   Future<List<SessaoTrabalho>> listarSessoes();

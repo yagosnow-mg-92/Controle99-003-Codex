@@ -306,6 +306,18 @@ class CorridaRepositoryImpl implements CorridaRepository {
   }
 
   @override
+  Future<List<PontoRota>> pontosDaCorridaPorReceita(String receitaId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'pontos_rota',
+      where: 'corrida_id = (SELECT id FROM corridas WHERE receita_id = ?)',
+      whereArgs: [receitaId],
+      orderBy: 'timestamp ASC',
+    );
+    return rows.map(_pontoFromMap).toList();
+  }
+
+  @override
   Future<List<SessaoTrabalho>> listarSessoes() async {
     final db = await _dbHelper.database;
     final rows = await db.query(

@@ -76,6 +76,8 @@ class ReceitaRepositoryImpl implements ReceitaRepository {
       'local_embarque': r.localEmbarque,
       'local_destino': r.localDestino,
       'tipo': r.tipo.name,
+      'hora_inicio': r.horaInicio?.toIso8601String(),
+      'hora_fim': r.horaFim?.toIso8601String(),
     };
   }
 
@@ -93,6 +95,8 @@ class ReceitaRepositoryImpl implements ReceitaRepository {
         (tipo) => tipo.name == map['tipo'],
         orElse: () => TipoReceita.outro,
       ),
+      horaInicio: map['hora_inicio'] != null ? DateTime.parse(map['hora_inicio'] as String) : null,
+      horaFim: map['hora_fim'] != null ? DateTime.parse(map['hora_fim'] as String) : null,
     );
   }
 }

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../domain/entities/receita.dart';
+import '../../../domain/repositories/corrida_repository.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/receita_provider.dart';
+import 'mapa_trajeto_screen.dart';
 
 class ReceitaScreen extends StatefulWidget {
   const ReceitaScreen({super.key});
@@ -32,6 +35,10 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
   /// Quando não-nulo, o formulário está mostrando um lançamento já
   /// existente (aberto com duplo toque na lista), em vez de um novo.
   String? _idEmVisualizacao;
+
+  /// O lançamento completo sendo visualizado — usado pra saber o tipo
+  /// (corrida/deslocamento/manual) e habilitar o botão de mapa.
+  Receita? _receitaEmVisualizacao;
 
   /// Enquanto true, os campos ficam travados (só leitura) — precisa
   /// tocar em "Editar" pra poder alterar algo.
@@ -83,6 +90,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     setState(() {
       _dataSelecionada = r.data;
       _idEmVisualizacao = r.id;
+      _receitaEmVisualizacao = r;
       _somenteLeitura = true;
       _valorPorKmPreview = km > 0 ? valor / km : 0;
       _tipoSelecionado = r.tipo;
@@ -110,6 +118,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     setState(() {
       _dataSelecionada = DateTime.now();
       _idEmVisualizacao = null;
+      _receitaEmVisualizacao = null;
       _somenteLeitura = false;
       _valorPorKmPreview = 0;
       _tipoSelecionado = TipoReceita.outro;
@@ -270,6 +279,11 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               ),
               const SizedBox(height: 14),
             ],
+            if (_receitaEmVisualizacao?.horaInicio != null &&
+                _receitaEmVisualizacao?.horaFim != null) ...[
+              _cardDuracao(_receitaEmVisualizacao!),
+              const SizedBox(height: 14),
+            ],
             _campoData(),
             const SizedBox(height: 14),
             DropdownButtonFormField<TipoReceita>(
@@ -367,21 +381,96 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     );
   }
 
-  Widget _botoesAcao(ReceitaProvider provider) {
-    // Visualizando (ainda travado): só o botão "Editar".
-    if (_idEmVisualizacao != null && _somenteLeitura) {
-      return SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: _habilitarEdicao,
-          icon: const Icon(Icons.edit_rounded, size: 18),
-          label: const Text('Editar'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
-            padding: const EdgeInsets.symmetric(vertical: 16),
+  Widget _cardDuracao(Receita r) {
+    final duracao = r.horaFim!.difference(r.horaInicio!);
+    final horaFormatada = DateFormat('HH:mm');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.timer_outlined, size: 18, color: AppColors.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '${horaFormatada.format(r.horaInicio!)} até ${horaFormatada.format(r.horaFim!)}',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
           ),
+          Text(
+            Formatters.duracao(duracao),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _abrirMapa() async {
+    final receita = _receitaEmVisualizacao;
+    if (receita == null || !receita.temTrajetoGps) return;
+
+    final repository = context.read<CorridaRepository>();
+    final pontos = receita.tipo == TipoReceita.corrida
+        ? await repository.pontosDaCorridaPorReceita(receita.id)
+        : await repository.pontosDoDeslocamentoPorReceita(receita.id);
+
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MapaTrajetoScreen(
+          pontos: pontos,
+          titulo: receita.tipo == TipoReceita.corrida ? 'Trajeto da corrida' : 'Trajeto do deslocamento',
         ),
+      ),
+    );
+  }
+
+  Widget _botoesAcao(ReceitaProvider provider) {
+    // Visualizando (ainda travado): "Ver mapa" (se tiver trajeto de GPS) + "Editar".
+    if (_idEmVisualizacao != null && _somenteLeitura) {
+      final temMapa = _receitaEmVisualizacao?.temTrajetoGps ?? false;
+      return Column(
+        children: [
+          if (temMapa) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _abrirMapa,
+                icon: const Icon(Icons.map_rounded, size: 18),
+                label: const Text('Ver mapa do trajeto'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.lucro,
+                  side: const BorderSide(color: AppColors.lucro),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _habilitarEdicao,
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: const Text('Editar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
