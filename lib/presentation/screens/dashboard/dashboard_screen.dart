@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../domain/entities/filtro_lancamentos.dart';
 import '../../../domain/entities/periodo_filtro.dart';
 import '../../providers/configuracoes_provider.dart';
 import '../../providers/dashboard_provider.dart';
@@ -62,7 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  Future<void> _abrirSeletorPeriodo(DashboardProvider provider) async {
+  Future<void> _abrirFiltros(DashboardProvider provider) async {
     await showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -153,6 +154,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     }
                   },
                 ),
+                const Divider(color: AppColors.border, height: 24),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Exibir lançamentos:',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final opcao in FiltroLancamentos.values)
+                  ListTile(
+                    leading: Icon(
+                      provider.filtroLancamentos == opcao
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_off_rounded,
+                      color: provider.filtroLancamentos == opcao
+                          ? AppColors.primary
+                          : AppColors.textDisabled,
+                    ),
+                    title: Text(
+                      opcao.descricao,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                    ),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await provider.mudarFiltroLancamentos(opcao);
+                    },
+                  ),
               ],
             ),
           ),
@@ -182,7 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   _Cabecalho(
                     provider: provider,
-                    onTapPeriodo: () => _abrirSeletorPeriodo(provider),
+                    onTapFiltros: () => _abrirFiltros(provider),
                   ),
                   const SizedBox(height: 20),
                   _CardsPrincipais(provider: provider),
@@ -210,9 +246,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _Cabecalho extends StatelessWidget {
   final DashboardProvider provider;
-  final VoidCallback onTapPeriodo;
+  final VoidCallback onTapFiltros;
 
-  const _Cabecalho({required this.provider, required this.onTapPeriodo});
+  const _Cabecalho({required this.provider, required this.onTapFiltros});
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +279,7 @@ class _Cabecalho extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         InkWell(
-          onTap: onTapPeriodo,
+          onTap: onTapFiltros,
           borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -255,9 +291,9 @@ class _Cabecalho extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _tituloPeriodo(provider.periodo),
-                  style: const TextStyle(
+                const Text(
+                  'Filtros',
+                  style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -690,7 +726,7 @@ class _ListaUltimosLancamentos extends StatelessWidget {
     final itens = [
       ...provider.ultimasReceitas.map((r) => (
             data: r.data,
-            titulo: 'Receita',
+            titulo: r.tipo.descricao,
             valor: r.valorRecebido,
             positivo: true,
           )),

@@ -5,6 +5,7 @@ import '../../core/database/database_helper.dart';
 import '../../core/utils/indicadores_service.dart';
 import '../../core/utils/periodo_calculator.dart';
 import '../../domain/entities/despesa.dart';
+import '../../domain/entities/filtro_lancamentos.dart';
 import '../../domain/entities/periodo_filtro.dart';
 import '../../domain/entities/receita.dart';
 import '../../domain/entities/resumo_periodo.dart';
@@ -34,9 +35,11 @@ class DashboardProvider extends ChangeNotifier {
   static const _chavePeriodo = 'dashboard_periodo';
   static const _chavePeriodoInicio = 'dashboard_periodo_inicio';
   static const _chavePeriodoFim = 'dashboard_periodo_fim';
+  static const _chaveFiltroLancamentos = 'dashboard_filtro_lancamentos';
 
   bool carregando = true;
   PeriodoFiltro periodo = PeriodoFiltro.dia;
+  FiltroLancamentos filtroLancamentos = FiltroLancamentos.todos;
   DateTime periodoPersonalizadoInicio = DateTime.now().subtract(const Duration(days: 7));
   DateTime periodoPersonalizadoFim = DateTime.now();
 
@@ -79,8 +82,18 @@ class DashboardProvider extends ChangeNotifier {
     final todasReceitas = await _receitaRepository.listar();
     final todasDespesas = await _despesaRepository.listar();
 
-    ultimasReceitas = todasReceitas.take(5).toList();
-    ultimasDespesas = todasDespesas.take(5).toList();
+    // Este filtro existe apenas para facilitar a consulta visual das
+    // corridas. `receitasPeriodo` e todos os indicadores acima continuam
+    // recebendo também os deslocamentos livres.
+    ultimasReceitas = todasReceitas
+        .where((receita) =>
+            filtroLancamentos == FiltroLancamentos.todos ||
+            receita.tipo == TipoReceita.corrida)
+        .take(5)
+        .toList();
+    ultimasDespesas = filtroLancamentos == FiltroLancamentos.todos
+        ? todasDespesas.take(5).toList()
+        : [];
 
     ultimos7Dias = await _calcularUltimosDias(7);
 
@@ -102,12 +115,24 @@ class DashboardProvider extends ChangeNotifier {
     await carregar();
   }
 
+  Future<void> mudarFiltroLancamentos(FiltroLancamentos novoFiltro) async {
+    if (filtroLancamentos == novoFiltro) return;
+    filtroLancamentos = novoFiltro;
+    await _salvarPreferenciaFiltroLancamentos();
+    await carregar();
+  }
+
   Future<void> _carregarPreferenciaPeriodo() async {
     final db = await _dbHelper.database;
     final rows = await db.query(
       'configuracoes',
-      where: 'chave IN (?, ?, ?)',
-      whereArgs: [_chavePeriodo, _chavePeriodoInicio, _chavePeriodoFim],
+      where: 'chave IN (?, ?, ?, ?)',
+      whereArgs: [
+        _chavePeriodo,
+        _chavePeriodoInicio,
+        _chavePeriodoFim,
+        _chaveFiltroLancamentos,
+      ],
     );
     final mapa = {for (final row in rows) row['chave'] as String: row['valor'] as String};
 
@@ -123,6 +148,14 @@ class DashboardProvider extends ChangeNotifier {
     final fimSalvo = mapa[_chavePeriodoFim];
     if (inicioSalvo != null) periodoPersonalizadoInicio = DateTime.parse(inicioSalvo);
     if (fimSalvo != null) periodoPersonalizadoFim = DateTime.parse(fimSalvo);
+
+    final nomeFiltroLancamentos = mapa[_chaveFiltroLancamentos];
+    if (nomeFiltroLancamentos != null) {
+      filtroLancamentos = FiltroLancamentos.values.firstWhere(
+        (filtro) => filtro.name == nomeFiltroLancamentos,
+        orElse: () => FiltroLancamentos.todos,
+      );
+    }
   }
 
   Future<void> _salvarPreferenciaPeriodo() async {
@@ -144,6 +177,15 @@ class DashboardProvider extends ChangeNotifier {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await batch.commit(noResult: true);
+  }
+
+  Future<void> _salvarPreferenciaFiltroLancamentos() async {
+    final db = await _dbHelper.database;
+    await db.insert(
+      'configuracoes',
+      {'chave': _chaveFiltroLancamentos, 'valor': filtroLancamentos.name},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<({DateTime dia, double receita, double lucro})>> _calcularUltimosDias(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../domain/entities/filtro_lancamentos.dart';
 import '../../../domain/entities/receita.dart';
 import '../../../domain/repositories/corrida_repository.dart';
 import '../../providers/dashboard_provider.dart';
@@ -626,10 +627,14 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
       );
     }
 
+    final filtroLancamentos = context.watch<DashboardProvider>().filtroLancamentos;
+    final lancamentosDoFiltroGlobal = provider.lancamentos.where((r) {
+      return filtroLancamentos == FiltroLancamentos.todos || r.tipo == TipoReceita.corrida;
+    });
     final busca = _buscaTexto.trim().toLowerCase();
     final lancamentosFiltrados = busca.isEmpty
-        ? provider.lancamentos
-        : provider.lancamentos.where((r) {
+        ? lancamentosDoFiltroGlobal.toList()
+        : lancamentosDoFiltroGlobal.where((r) {
             return r.valorRecebido.toString().contains(busca) ||
                 r.kmRodados.toString().contains(busca) ||
                 (r.observacao ?? '').toLowerCase().contains(busca) ||
@@ -646,7 +651,11 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
           border: Border.all(color: AppColors.border),
         ),
         child: Text(
-          busca.isEmpty ? 'Nenhuma receita lançada ainda' : 'Nenhum resultado para "$_buscaTexto"',
+          busca.isEmpty
+              ? filtroLancamentos == FiltroLancamentos.somenteCorridas
+                  ? 'Nenhuma corrida lançada ainda'
+                  : 'Nenhuma receita lançada ainda'
+              : 'Nenhum resultado para "$_buscaTexto"',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
       );
