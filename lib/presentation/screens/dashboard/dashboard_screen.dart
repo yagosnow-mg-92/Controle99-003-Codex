@@ -67,12 +67,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
-          child: Padding(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              // Em telas com a barra de navegação do Android, os filtros
+              // continuam acima dela e o conteúdo pode ser rolado.
+              maxHeight: MediaQuery.sizeOf(context).height * 0.80,
+            ),
+            child: SingleChildScrollView(
+              child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -190,6 +199,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
               ],
+            ),
+              ),
             ),
           ),
         );
