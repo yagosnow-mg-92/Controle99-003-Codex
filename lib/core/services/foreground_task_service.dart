@@ -1,4 +1,5 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Mantém o app vivo em segundo plano enquanto o motociclista está
 /// "online", através de um serviço em primeiro plano do Android (exige
@@ -28,12 +29,22 @@ class ForegroundTaskService {
   }
 
   static Future<void> iniciar() async {
-    if (await FlutterForegroundTask.isRunningService) return;
-    await FlutterForegroundTask.startService(
-      notificationTitle: 'Moto Gestor',
-      notificationText: 'Você está online — rastreando localização.',
-      callback: _iniciarCallback,
-    );
+    // Não precisa de permissão adicional no Android. Repetimos a chamada
+    // quando o app é retomado porque o sistema pode liberar o wake lock.
+    await WakelockPlus.enable();
+
+    try {
+      if (await FlutterForegroundTask.isRunningService) return;
+      await FlutterForegroundTask.startService(
+        notificationTitle: 'Moto Gestor',
+        notificationText: 'Você está online — rastreando localização.',
+        callback: _iniciarCallback,
+      );
+    } catch (_) {
+      // Se o serviço não puder iniciar, não deixamos a tela presa ligada.
+      await WakelockPlus.disable();
+      rethrow;
+    }
   }
 
   static Future<void> atualizarNotificacao(String texto) async {
@@ -45,7 +56,13 @@ class ForegroundTaskService {
   }
 
   static Future<void> parar() async {
-    await FlutterForegroundTask.stopService();
+    try {
+      await FlutterForegroundTask.stopService();
+    } finally {
+      // Fora do modo online a tela volta a obedecer o tempo configurado pelo
+      // motociclista, evitando gasto de bateria desnecessário.
+      await WakelockPlus.disable();
+    }
   }
 }
 
