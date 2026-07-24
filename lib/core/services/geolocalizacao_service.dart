@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -5,7 +7,6 @@ import 'package:geolocator_android/geolocator_android.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../domain/entities/ponto_rota.dart';
-
 
 
 /// Resultado de uma solicitação de permissão de localização.
@@ -122,7 +123,15 @@ class GeolocalizacaoService {
     // válido ainda poder ser ligado ao último ponto confiável.
     if (velocidadeCalculada > 55) return false;
 
-    final emMovimento = posicao.speed >= 1 || velocidadeCalculada >= 1.4;
+    // A diferença entre duas posições isoladas, sozinha, não é confiável:
+    // multipath perto de muro/prédio pode "pular" 10-20 m com o veículo
+    // parado. Dois sinais corroboram o movimento: a velocidade medida pelo
+    // GPS (efeito Doppler, mais resistente a esse ruído) OU o deslocamento
+    // superar a soma das margens de erro dos dois pontos — sem exigir
+    // precisão perfeita, rara em GPS de celular em movimento.
+    final raioIncerteza = (posicao.accuracy + (referenciaAnterior.precisaoMetros ?? 8)) / 2;
+    final emMovimento = posicao.speed >= 0.8 ||
+        velocidadeCalculada >= math.max(1.4, raioIncerteza * 0.6 / segundos);
     final mudouDirecao =
         _diferencaAngular(posicao.heading, referenciaAnterior.direcaoGraus) >= 30;
     return (metros >= 5 && emMovimento) ||
@@ -175,23 +184,35 @@ class GeolocalizacaoService {
   /// localização simulada, leituras muito imprecisas e saltos incompatíveis
   /// com uma moto. Isso mantém o odômetro alinhado ao trajeto exibido sem
   /// somar ruído de GPS parado.
-  double distanciaDaTrilhaKm(List<PontoRota> pontos) {
-    if (pontos.length < 2) return 0;
+  ///
+  /// Antes de somar, também removemos "picos isolados": um ponto que pula
+  /// para longe e no ponto seguinte volta pra perto de onde estava — típico
+  /// de multipercurso perto de prédio/muro. Isso ataca justamente o padrão
+  /// de "ficou parado e o app disse que andou X metros", que a checagem de
+  /// velocidade Doppler abaixo, sozinha, pode não pegar se o próprio chip
+  /// também relatar uma velocidade espúria durante o mesmo instante ruim.
+  double distanciaDaTrilhaKm(List<PontoRota> pontosOriginais) {
+    if (pontosOriginais.length < 2) return 0;
 
-    const precisaoMaximaMetros = 50.0;
+    const precisaoMaximaMetros = 25.0;
+    const precisaoAltaMetros = 8.0;
     const velocidadeMaximaMetrosPorSegundo = 55.0; // 198 km/h.
     const deslocamentoMinimoMetros = 3.0;
+    const velocidadeMinimaDispositivoMps = 0.8;
+
+    final pontos = pontosOriginais.where((p) {
+      final precisao = p.precisaoMetros;
+      return !p.localizacaoSimulada && (precisao == null || precisao <= precisaoMaximaMetros);
+    }).toList();
+    if (pontos.length < 2) return 0;
+
+    final filtrados = _removerPicosIsolados(pontos);
+    if (filtrados.length < 2) return 0;
 
     PontoRota? anterior;
     double totalMetros = 0;
 
-    for (final ponto in pontos) {
-      final precisao = ponto.precisaoMetros;
-      if (ponto.localizacaoSimulada ||
-          (precisao != null && precisao > precisaoMaximaMetros)) {
-        continue;
-      }
-
+    for (final ponto in filtrados) {
       if (anterior == null) {
         anterior = ponto;
         continue;
@@ -206,16 +227,69 @@ class GeolocalizacaoService {
         ponto.latitude,
         ponto.longitude,
       );
-      final velocidade = metros / segundos;
+      final velocidadeCalculada = metros / segundos;
 
       // Não move a referência quando a leitura é um salto: o próximo ponto
       // válido ainda poderá ser ligado ao último ponto confiável.
-      if (velocidade > velocidadeMaximaMetrosPorSegundo) continue;
+      if (velocidadeCalculada > velocidadeMaximaMetrosPorSegundo) continue;
 
-      if (metros >= deslocamentoMinimoMetros) totalMetros += metros;
+      // A diferença de posição sozinha não distingue "andou 20 m" de
+      // "ficou parado e o GPS pulou 20 m por multipath". Dois sinais
+      // corroboram o movimento: a velocidade que o próprio chip mediu
+      // (efeito Doppler, mais resistente a esse ruído) OU o deslocamento
+      // superar a soma das margens de erro (`precisaoMetros`) dos dois
+      // pontos — não exigimos precisão perfeita (rara em GPS de celular em
+      // movimento), só que a distância percorrida seja maior que o próprio
+      // raio de incerteza combinado das duas leituras.
+      final confirmadoPeloDispositivo = ponto.velocidadeMetrosPorSegundo != null &&
+          ponto.velocidadeMetrosPorSegundo! >= velocidadeMinimaDispositivoMps;
+      final raioIncerteza =
+          ((anterior.precisaoMetros ?? precisaoAltaMetros) + (ponto.precisaoMetros ?? precisaoAltaMetros)) / 2;
+      final deslocamentoAlemDoRuido = metros >= math.max(deslocamentoMinimoMetros, raioIncerteza * 0.6);
+      final emMovimento = confirmadoPeloDispositivo || deslocamentoAlemDoRuido;
+
+      if (emMovimento && metros >= deslocamentoMinimoMetros) {
+        totalMetros += metros;
+      }
       anterior = ponto;
     }
 
     return totalMetros / 1000;
+  }
+
+  /// Remove pontos que "pularam e voltaram" — ida a um lugar distante e
+  /// retorno logo em seguida, sem sustentar a posição nova. Compara cada
+  /// ponto com seu vizinho anterior aceito e o próximo bruto da lista;
+  /// se o caminho direto entre os dois vizinhos é bem mais curto que o
+  /// caminho passando pelo ponto do meio, ele é ruído.
+  List<PontoRota> _removerPicosIsolados(List<PontoRota> pontos) {
+    const distanciaMinimaParaAvaliar = 15.0; // abaixo disso, não vale a pena avaliar como pico.
+    const proporcaoMaximaDireto = 0.4;
+
+    final filtrados = <PontoRota>[pontos.first];
+    for (int i = 1; i < pontos.length - 1; i++) {
+      final anterior = filtrados.last;
+      final atual = pontos[i];
+      final proximo = pontos[i + 1];
+
+      final distAnteriorAtual = Geolocator.distanceBetween(
+        anterior.latitude, anterior.longitude, atual.latitude, atual.longitude,
+      );
+      final distAtualProximo = Geolocator.distanceBetween(
+        atual.latitude, atual.longitude, proximo.latitude, proximo.longitude,
+      );
+      final distAnteriorProximo = Geolocator.distanceBetween(
+        anterior.latitude, anterior.longitude, proximo.latitude, proximo.longitude,
+      );
+
+      final ehPicoIsolado = distAnteriorAtual > distanciaMinimaParaAvaliar &&
+          distAtualProximo > distanciaMinimaParaAvaliar &&
+          distAnteriorProximo < (distAnteriorAtual + distAtualProximo) * proporcaoMaximaDireto;
+
+      if (ehPicoIsolado) continue;
+      filtrados.add(atual);
+    }
+    filtrados.add(pontos.last);
+    return filtrados;
   }
 }
