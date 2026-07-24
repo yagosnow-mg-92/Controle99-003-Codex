@@ -6,6 +6,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../domain/entities/ponto_rota.dart';
 
+
+
 /// Resultado de uma solicitação de permissão de localização.
 enum ResultadoPermissao { concedida, negada, negadaPermanente, servicoDesligado }
 
@@ -87,6 +89,51 @@ class GeolocalizacaoService {
       accuracy: LocationAccuracy.high,
       distanceFilter: 3,
     );
+  }
+
+  /// Decide se uma posição recém-chegada deve virar a nova referência do
+  /// odômetro em tempo real, e qual passa a ser essa referência.
+  ///
+  /// Antes vivia dentro do `CorridaProvider`, rodando no isolate principal
+  /// (preso à tela). Agora mora aqui porque quem chama isso é o
+  /// `TaskHandler` do `flutter_foreground_task`, dentro do isolate do
+  /// serviço em primeiro plano — o único que o Android trata com
+  /// prioridade de execução consistente mesmo com outro app na tela.
+  bool decidirAceite({
+    required Position posicao,
+    required DateTime agora,
+    required PontoRota? referenciaAnterior,
+    bool obrigatorio = false,
+  }) {
+    if (posicao.isMocked || posicao.accuracy > 20) return false;
+    if (referenciaAnterior == null || obrigatorio) return true;
+
+    final metros = Geolocator.distanceBetween(
+      referenciaAnterior.latitude,
+      referenciaAnterior.longitude,
+      posicao.latitude,
+      posicao.longitude,
+    );
+    final segundos = agora.difference(referenciaAnterior.timestamp).inMilliseconds / 1000;
+    if (segundos <= 0) return false;
+
+    final velocidadeCalculada = metros / segundos;
+    // Salto suspeito: rejeita sem mover a referência, para o próximo ponto
+    // válido ainda poder ser ligado ao último ponto confiável.
+    if (velocidadeCalculada > 55) return false;
+
+    final emMovimento = posicao.speed >= 1 || velocidadeCalculada >= 1.4;
+    final mudouDirecao =
+        _diferencaAngular(posicao.heading, referenciaAnterior.direcaoGraus) >= 30;
+    return (metros >= 5 && emMovimento) ||
+        (segundos >= 3 && emMovimento) ||
+        (metros >= 3 && mudouDirecao && emMovimento);
+  }
+
+  double _diferencaAngular(double atual, double? anterior) {
+    if (anterior == null || atual < 0 || anterior < 0) return 0;
+    final diferenca = (atual - anterior).abs() % 360;
+    return diferenca > 180 ? 360 - diferenca : diferenca;
   }
 
   /// Converte coordenadas em rua + bairro. Retorna nulos silenciosamente

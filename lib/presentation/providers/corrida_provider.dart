@@ -41,9 +41,7 @@ class CorridaProvider extends ChangeNotifier {
   String? enderecoAtual;
 
   Timer? _timer;
-  StreamSubscription<Position>? _posicaoSubscription;
   Position? _ultimaPosicaoConhecida;
-  PontoRota? _ultimoPontoAceito;
 
   /// Chamado uma vez quando a tela Corrida é aberta pela primeira vez.
   /// Restaura o estado caso o motociclista tenha ficado online e o app
@@ -66,10 +64,22 @@ class CorridaProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Inicia o serviço em primeiro plano (se ainda não estiver rodando) e
+  /// informa a ele qual sessão/corrida está ativa. A partir daqui, quem
+  /// escuta o GPS e grava os pontos é o `_CorridaTaskHandler`, dentro do
+  /// isolate do próprio serviço — não este isolate principal, que fica
+  /// preso ao ciclo de vida da tela e por isso não é confiável quando
+  /// outro app assume o primeiro plano.
   Future<void> _retomarRastreamento() async {
+    // Salva ANTES de iniciar o serviço: o `onStart` do isolate em primeiro
+    // plano lê esse dado assim que sobe, e pode rodar antes do `await`
+    // abaixo terminar — não dá pra confiar na ordem entre os dois isolates.
+    await ForegroundTaskService.atualizarSessao(
+      sessaoId: sessaoAtual?.id,
+      corridaId: corridaAtual?.id,
+    );
     await ForegroundTaskService.iniciar();
     _iniciarTimer();
-    _iniciarStreamPosicao();
   }
 
   void _iniciarTimer() {
@@ -82,29 +92,25 @@ class CorridaProvider extends ChangeNotifier {
     });
   }
 
-  void _iniciarStreamPosicao() {
-    _posicaoSubscription?.cancel();
-    _posicaoSubscription = _geo.streamPosicao().listen((posicao) async {
-      _ultimaPosicaoConhecida = posicao;
-      await _registrarPosicao(posicao);
-    });
-  }
-
-  /// Salva todos os pontos para o mapa e marca os que passam no filtro rápido
-  /// de telemetria. A quilometragem é recalculada ao finalizar usando a
-  /// trilha bruta e validação de cada segmento, para que um ponto menos
-  /// preciso não elimine um trecho inteiro da corrida.
-  Future<void> _registrarPosicao(Position posicao, {bool obrigatorio = false}) async {
+  /// Grava, de forma pontual, a localização exata de um clique importante
+  /// (ficar online, iniciar/pegar/cancelar/finalizar corrida, ficar
+  /// offline). Roda no isolate principal porque só é chamada em resposta a
+  /// um toque do usuário — ou seja, com o app garantidamente em primeiro
+  /// plano — e sempre é aceita no cálculo (marca o início/fim exato de cada
+  /// trecho, mesmo que o passo anterior daria como rejeitado por distância).
+  Future<void> _registrarPosicaoAtualObrigatoria() async {
     final sessao = sessaoAtual;
     if (sessao == null) return;
 
-    final agora = DateTime.now();
-    final aceito = _deveAceitarNoCalculo(posicao, agora, obrigatorio: obrigatorio);
+    final posicao = await _geo.posicaoAtual();
+    if (posicao == null) return;
+    _ultimaPosicaoConhecida = posicao;
+
     final ponto = PontoRota(
       id: _uuid.v4(),
       sessaoId: sessao.id,
       corridaId: corridaAtual?.id,
-      timestamp: agora,
+      timestamp: DateTime.now(),
       latitude: posicao.latitude,
       longitude: posicao.longitude,
       precisaoMetros: posicao.accuracy,
@@ -113,53 +119,9 @@ class CorridaProvider extends ChangeNotifier {
       altitudeMetros: posicao.altitude,
       precisaoVelocidadeMetrosPorSegundo: posicao.speedAccuracy,
       localizacaoSimulada: posicao.isMocked,
-      aceitoNoCalculo: aceito,
+      aceitoNoCalculo: true,
     );
     await _repository.registrarPontoRota(ponto);
-    if (aceito) _ultimoPontoAceito = ponto;
-  }
-
-  bool _deveAceitarNoCalculo(
-    Position posicao,
-    DateTime agora, {
-    required bool obrigatorio,
-  }) {
-    if (posicao.isMocked || posicao.accuracy > 20) return false;
-
-    final anterior = _ultimoPontoAceito;
-    if (anterior == null || obrigatorio) return true;
-
-    final metros = Geolocator.distanceBetween(
-      anterior.latitude,
-      anterior.longitude,
-      posicao.latitude,
-      posicao.longitude,
-    );
-    final segundos = agora.difference(anterior.timestamp).inMilliseconds / 1000;
-    if (segundos <= 0) return false;
-
-    final velocidadeCalculada = metros / segundos;
-    if (velocidadeCalculada > 55) return false;
-
-    final emMovimento = posicao.speed >= 1 || velocidadeCalculada >= 1.4;
-    final mudouDirecao = _diferencaAngular(posicao.heading, anterior.direcaoGraus) >= 30;
-    return (metros >= 5 && emMovimento) ||
-        (segundos >= 3 && emMovimento) ||
-        (metros >= 3 && mudouDirecao && emMovimento);
-  }
-
-  double _diferencaAngular(double atual, double? anterior) {
-    if (anterior == null || atual < 0 || anterior < 0) return 0;
-    final diferenca = (atual - anterior).abs() % 360;
-    return diferenca > 180 ? 360 - diferenca : diferenca;
-  }
-
-  Future<void> _registrarPosicaoAtualObrigatoria() async {
-    final posicao = await _geo.posicaoAtual();
-    if (posicao != null) {
-      _ultimaPosicaoConhecida = posicao;
-      await _registrarPosicao(posicao, obrigatorio: true);
-    }
   }
 
   Future<({double? lat, double? lng, String? rua, String? bairro})> _capturarLocalizacao() async {
@@ -209,7 +171,6 @@ class CorridaProvider extends ChangeNotifier {
 
     final sessao = await _repository.criarSessao(DateTime.now());
     sessaoAtual = sessao;
-    _ultimoPontoAceito = null;
     tempoDecorrido = Duration.zero;
 
     await _registrarEvento(sessao.id, TipoEvento.ficouOnline);
@@ -249,6 +210,10 @@ class CorridaProvider extends ChangeNotifier {
       await _repository.atualizarLocalEmbarque(corrida.id, enderecoInicio);
     }
     await _registrarPosicaoAtualObrigatoria();
+    await ForegroundTaskService.atualizarSessao(
+      sessaoId: sessaoAtual!.id,
+      corridaId: corridaAtual!.id,
+    );
 
     await _repository.atualizarStatusSessao(sessaoAtual!.id, StatusSessao.corridaIniciada);
     sessaoAtual = sessaoAtual!.copyWith(status: StatusSessao.corridaIniciada);
@@ -301,6 +266,7 @@ class CorridaProvider extends ChangeNotifier {
     corridaAtual = null;
     await _repository.atualizarStatusSessao(sessaoAtual!.id, StatusSessao.online);
     sessaoAtual = sessaoAtual!.copyWith(status: StatusSessao.online);
+    await ForegroundTaskService.atualizarSessao(sessaoId: sessaoAtual!.id, corridaId: null);
 
     await ForegroundTaskService.atualizarNotificacao('Você está online — procurando corrida.');
 
@@ -372,6 +338,7 @@ class CorridaProvider extends ChangeNotifier {
     corridaAtual = null;
     await _repository.atualizarStatusSessao(sessaoAtual!.id, StatusSessao.online);
     sessaoAtual = sessaoAtual!.copyWith(status: StatusSessao.online);
+    await ForegroundTaskService.atualizarSessao(sessaoId: sessaoAtual!.id, corridaId: null);
 
     await ForegroundTaskService.atualizarNotificacao('Você está online — procurando corrida.');
 
@@ -395,12 +362,10 @@ class CorridaProvider extends ChangeNotifier {
     await _repository.encerrarSessao(sessaoAtual!.id, DateTime.now());
 
     _timer?.cancel();
-    await _posicaoSubscription?.cancel();
     await ForegroundTaskService.parar();
 
     sessaoAtual = null;
     corridaAtual = null;
-    _ultimoPontoAceito = null;
     tempoDecorrido = Duration.zero;
 
     processando = false;
@@ -489,7 +454,6 @@ class CorridaProvider extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
-    _posicaoSubscription?.cancel();
     super.dispose();
   }
 }
