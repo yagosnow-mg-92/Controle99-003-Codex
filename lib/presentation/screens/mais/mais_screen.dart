@@ -85,7 +85,7 @@ class _ItemMenu extends StatelessWidget {
                 children: [
                   Text(
                     titulo,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15.5,
                       fontWeight: FontWeight.w600,
@@ -94,12 +94,12 @@ class _ItemMenu extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitulo,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
           ],
         ),
       ),

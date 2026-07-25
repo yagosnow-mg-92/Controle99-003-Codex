@@ -33,6 +33,9 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
 
+  # Preferência de tema (claro/escuro) salva localmente.
+  shared_preferences: ^2.3.2
+
   # Rastreamento de rota (modo Corrida). flutter_foreground_task mantém
   # o processo do app vivo em segundo plano (via serviço em primeiro
   # plano do Android); geolocator cuida do GPS em si dentro dele.

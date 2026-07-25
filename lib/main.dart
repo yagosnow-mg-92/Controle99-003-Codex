@@ -19,13 +19,19 @@ import 'presentation/providers/dashboard_provider.dart';
 import 'presentation/providers/despesa_provider.dart';
 import 'presentation/providers/indicadores_provider.dart';
 import 'presentation/providers/receita_provider.dart';
+import 'presentation/providers/tema_provider.dart';
 import 'presentation/screens/home_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
   ForegroundTaskService.inicializar();
-  runApp(const MotoGestorApp());
+
+  // Lido ANTES do runApp para a primeira tela já nascer com o tema certo
+  // (sem um flash do tema escuro seguido de troca pro claro, ou vice-versa).
+  final temaEscuroInicial = await TemaProvider.lerPreferenciaSalva();
+
+  runApp(MotoGestorApp(temaEscuroInicial: temaEscuroInicial));
 }
 
 /// Ponto único de injeção de dependências manual (sem framework externo,
@@ -33,7 +39,9 @@ Future<void> main() async {
 /// expostos pela interface de domínio, nunca pela implementação concreta,
 /// permitindo trocar a fonte de dados (ex.: sincronização em nuvem) no futuro.
 class MotoGestorApp extends StatelessWidget {
-  const MotoGestorApp({super.key});
+  const MotoGestorApp({super.key, required this.temaEscuroInicial});
+
+  final bool temaEscuroInicial;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +51,9 @@ class MotoGestorApp extends StatelessWidget {
         Provider<DespesaRepository>(create: (_) => DespesaRepositoryImpl()),
         Provider<ConfiguracoesRepository>(create: (_) => ConfiguracoesRepositoryImpl()),
         Provider<CorridaRepository>(create: (_) => CorridaRepositoryImpl()),
+        ChangeNotifierProvider<TemaProvider>(
+          create: (_) => TemaProvider(temaEscuroInicial: temaEscuroInicial),
+        ),
         ChangeNotifierProvider<DashboardProvider>(
           create: (context) => DashboardProvider(
             receitaRepository: context.read<ReceitaRepository>(),
@@ -77,20 +88,28 @@ class MotoGestorApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Moto Gestor',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.dark,
-        locale: const Locale('pt', 'BR'),
-        supportedLocales: const [Locale('pt', 'BR')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: const HomeShell(),
+      child: Consumer<TemaProvider>(
+        builder: (context, tema, _) {
+          return MaterialApp(
+            title: 'Moto Gestor',
+            debugShowCheckedModeBanner: false,
+            theme: tema.temaEscuro ? AppTheme.dark : AppTheme.light,
+            themeMode: tema.temaEscuro ? ThemeMode.dark : ThemeMode.light,
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const [Locale('pt', 'BR')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            // A Key mudando força o Flutter a jogar fora e reconstruir toda
+            // a árvore abaixo dela — necessário porque as telas leem
+            // `AppColors.algumCampo` como getter estático no momento do
+            // build, e não escutam o TemaProvider individualmente. Ver
+            // comentário em tema_provider.dart para o porquê dessa escolha.
+            home: HomeShell(key: ValueKey(tema.temaEscuro)),
+          );
+        },
       ),
     );
   }

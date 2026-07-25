@@ -41,14 +41,14 @@ class _CorridaScreenState extends State<CorridaScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(titulo, style: const TextStyle(color: AppColors.textPrimary)),
+        title: Text(titulo, style: TextStyle(color: AppColors.textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               mensagem,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -60,7 +60,7 @@ class _CorridaScreenState extends State<CorridaScreen> {
               controller: controller,
               autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
               decoration: const InputDecoration(prefixText: 'R\$ '),
             ),
           ],
@@ -68,7 +68,7 @@ class _CorridaScreenState extends State<CorridaScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () {
@@ -76,7 +76,7 @@ class _CorridaScreenState extends State<CorridaScreen> {
               if (valor == null || valor <= 0) return;
               Navigator.of(context).pop(valor);
             },
-            child: const Text('Confirmar', style: TextStyle(color: AppColors.primary)),
+            child: Text('Confirmar', style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),
@@ -96,7 +96,7 @@ class _CorridaScreenState extends State<CorridaScreen> {
       appBar: AppBar(title: const Text('Corrida')),
       body: SafeArea(
         child: !_inicializado
-            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+            ? Center(child: CircularProgressIndicator(color: AppColors.primary))
             : Consumer<CorridaProvider>(
                 builder: (context, provider, _) {
                   return Padding(
@@ -191,10 +191,10 @@ class _AvisoErro extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.despesa, size: 20),
+          Icon(Icons.error_outline_rounded, color: AppColors.despesa, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(mensagem, style: const TextStyle(color: AppColors.despesa, fontSize: 13)),
+            child: Text(mensagem, style: TextStyle(color: AppColors.despesa, fontSize: 13)),
           ),
         ],
       ),
@@ -218,15 +218,15 @@ class _TelaOffline extends StatelessWidget {
             color: AppColors.surfaceElevated,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.two_wheeler_rounded, size: 56, color: AppColors.textDisabled),
+          child: Icon(Icons.two_wheeler_rounded, size: 56, color: AppColors.textDisabled),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Você está offline',
           style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Fique online para começar a rastrear seu tempo e localização.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -282,7 +282,7 @@ class _CabecalhoStatus extends StatelessWidget {
         const SizedBox(height: 20),
         Text(
           formatarDuracao(tempo),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 44,
             fontWeight: FontWeight.w800,
@@ -296,13 +296,13 @@ class _CabecalhoStatus extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.location_on_rounded, color: AppColors.textSecondary, size: 15),
+                Icon(Icons.location_on_rounded, color: AppColors.textSecondary, size: 15),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     endereco!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -355,9 +355,9 @@ class _TelaOnline extends StatelessWidget {
             onPressed: provider.processando ? null : onFicarOffline,
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 18),
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(color: AppColors.border),
             ),
-            child: const Text('Ficar offline', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Ficar offline', style: TextStyle(color: AppColors.textSecondary)),
           ),
         ),
       ],
@@ -393,7 +393,7 @@ class _TelaCorridaIniciada extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Valor: ${Formatters.moeda(provider.corridaAtual?.valor ?? 0)}',
-          style: const TextStyle(color: AppColors.receita, fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(color: AppColors.receita, fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 40),
         SizedBox(
@@ -414,9 +414,9 @@ class _TelaCorridaIniciada extends StatelessWidget {
             onPressed: provider.processando ? null : onCancelar,
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 18),
-              side: const BorderSide(color: AppColors.despesa),
+              side: BorderSide(color: AppColors.despesa),
             ),
-            child: const Text('Cancelar corrida', style: TextStyle(color: AppColors.despesa)),
+            child: Text('Cancelar corrida', style: TextStyle(color: AppColors.despesa)),
           ),
         ),
       ],
@@ -450,7 +450,7 @@ class _TelaComPassageiro extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Valor: ${Formatters.moeda(provider.corridaAtual?.valor ?? 0)}',
-          style: const TextStyle(color: AppColors.receita, fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(color: AppColors.receita, fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 40),
         SizedBox(

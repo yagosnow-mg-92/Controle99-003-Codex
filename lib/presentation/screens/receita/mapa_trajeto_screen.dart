@@ -18,7 +18,7 @@ class MapaTrajetoScreen extends StatelessWidget {
     if (pontos.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: Text(titulo)),
-        body: const Center(
+        body: Center(
           child: Text(
             'Nenhum ponto de GPS foi gravado para esse lançamento.',
             style: TextStyle(color: AppColors.textSecondary),
@@ -57,14 +57,14 @@ class MapaTrajetoScreen extends StatelessWidget {
                 point: inicio,
                 width: 36,
                 height: 36,
-                child: const _PinoMapa(cor: AppColors.receita, icone: Icons.trip_origin_rounded),
+                child: _PinoMapa(cor: AppColors.receita, icone: Icons.trip_origin_rounded),
               ),
               if (fim != inicio)
                 Marker(
                   point: fim,
                   width: 36,
                   height: 36,
-                  child: const _PinoMapa(cor: AppColors.despesa, icone: Icons.location_on_rounded),
+                  child: _PinoMapa(cor: AppColors.despesa, icone: Icons.location_on_rounded),
                 ),
             ],
           ),

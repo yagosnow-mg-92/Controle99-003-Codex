@@ -45,7 +45,7 @@ class IndicadorCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
@@ -57,7 +57,7 @@ class IndicadorCard extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             valor,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -67,7 +67,7 @@ class IndicadorCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               subtitulo!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,

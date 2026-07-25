@@ -89,7 +89,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
     FocusScope.of(context).requestFocus(_categoriaFocusNode);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Despesa lançada com sucesso'),
         backgroundColor: AppColors.despesa,
       ),
@@ -107,7 +107,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.alerta),
@@ -124,16 +124,16 @@ class _DespesasScreenState extends State<DespesasScreen> {
           'Essa despesa de ${Formatters.moeda(valor)} em "$categoria" está '
           '${percentualAcima.toStringAsFixed(0)}% acima da sua média nessa '
           'categoria (${Formatters.moeda(media)}). Quer salvar mesmo assim?',
-          style: const TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Revisar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Revisar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Salvar mesmo assim', style: TextStyle(color: AppColors.alerta)),
+            child: Text('Salvar mesmo assim', style: TextStyle(color: AppColors.alerta)),
           ),
         ],
       ),
@@ -147,23 +147,23 @@ class _DespesasScreenState extends State<DespesasScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Excluir lançamento?',
           style: TextStyle(color: AppColors.textPrimary),
         ),
         content: Text(
           '${despesa.categoria} de ${Formatters.moeda(despesa.valor)} do dia '
           '${Formatters.data(despesa.data)} será excluída permanentemente.',
-          style: const TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Excluir', style: TextStyle(color: AppColors.despesa)),
+            child: Text('Excluir', style: TextStyle(color: AppColors.despesa)),
           ),
         ],
       ),
@@ -183,7 +183,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
               children: [
                 _formulario(provider),
                 const SizedBox(height: 28),
-                const Text(
+                Text(
                   'Despesas recentes',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -223,8 +223,8 @@ class _DespesasScreenState extends State<DespesasScreen> {
             TextFormField(
               controller: _valorController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Valor',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixText: 'R\$ ',
@@ -238,8 +238,8 @@ class _DespesasScreenState extends State<DespesasScreen> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _observacaoController,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Observação (opcional)',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
               ),
@@ -278,11 +278,11 @@ class _DespesasScreenState extends State<DespesasScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textSecondary),
+            Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textSecondary),
             const SizedBox(width: 12),
             Text(
               Formatters.data(_dataSelecionada),
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
             ),
           ],
         ),
@@ -308,8 +308,8 @@ class _DespesasScreenState extends State<DespesasScreen> {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: const InputDecoration(
+          style: TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
             labelText: 'Categoria',
             labelStyle: TextStyle(color: AppColors.textSecondary),
             hintText: 'Ex: Gasolina, Manutenção...',
@@ -337,7 +337,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
                   final opcao = options.elementAt(index);
                   return ListTile(
                     dense: true,
-                    title: Text(opcao, style: const TextStyle(color: AppColors.textPrimary)),
+                    title: Text(opcao, style: TextStyle(color: AppColors.textPrimary)),
                     onTap: () => onSelected(opcao),
                   );
                 },
@@ -352,8 +352,8 @@ class _DespesasScreenState extends State<DespesasScreen> {
   Widget _campoBusca() {
     return TextField(
       onChanged: (texto) => setState(() => _buscaTexto = texto),
-      style: const TextStyle(color: AppColors.textPrimary),
-      decoration: const InputDecoration(
+      style: TextStyle(color: AppColors.textPrimary),
+      decoration: InputDecoration(
         hintText: 'Buscar por categoria, valor ou observação...',
         hintStyle: TextStyle(color: AppColors.textDisabled),
         prefixIcon: Icon(Icons.search_rounded, color: AppColors.textSecondary),
@@ -363,7 +363,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
 
   Widget _listaLancamentos(DespesaProvider provider) {
     if (provider.carregando) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
@@ -389,7 +389,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
         ),
         child: Text(
           busca.isEmpty ? 'Nenhuma despesa lançada ainda' : 'Nenhum resultado para "$_buscaTexto"',
-          style: const TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
       );
     }
@@ -413,7 +413,7 @@ class _DespesasScreenState extends State<DespesasScreen> {
                 color: AppColors.despesa.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.delete_outline_rounded, color: AppColors.despesa),
+              child: Icon(Icons.delete_outline_rounded, color: AppColors.despesa),
             ),
             onDismissed: (_) async {
               await context.read<DespesaProvider>().excluir(d.id);
@@ -422,21 +422,21 @@ class _DespesasScreenState extends State<DespesasScreen> {
               }
             },
             child: ListTile(
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 backgroundColor: AppColors.despesaSoft,
                 child: Icon(Icons.arrow_downward_rounded, color: AppColors.despesa, size: 18),
               ),
               title: Text(
                 d.categoria,
-                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
                 Formatters.data(d.data),
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
               ),
               trailing: Text(
                 '- ${Formatters.moeda(d.valor)}',
-                style: const TextStyle(color: AppColors.despesa, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.despesa, fontWeight: FontWeight.w600),
               ),
             ),
           );

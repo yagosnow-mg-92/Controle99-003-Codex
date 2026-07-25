@@ -95,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -126,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     title: Text(
                       _tituloPeriodo(opcao),
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                     ),
                     onTap: () async {
                       Navigator.of(context).pop();
@@ -142,7 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ? AppColors.primary
                         : AppColors.textDisabled,
                   ),
-                  title: const Text(
+                  title: Text(
                     'Personalizado (escolher intervalo)',
                     style: TextStyle(color: AppColors.textPrimary),
                   ),
@@ -163,8 +163,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     }
                   },
                 ),
-                const Divider(color: AppColors.border, height: 24),
-                const Padding(
+                Divider(color: AppColors.border, height: 24),
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -191,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     title: Text(
                       opcao.descricao,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                     ),
                     onTap: () async {
                       Navigator.of(context).pop();
@@ -215,7 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Consumer<DashboardProvider>(
           builder: (context, provider, _) {
             if (provider.carregando) {
-              return const Center(
+              return Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               );
             }
@@ -274,10 +274,10 @@ class _Cabecalho extends StatelessWidget {
             children: [
               Text(
                 Formatters.dataExtenso(agora),
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 2),
-              const Text(
+              Text(
                 'Painel',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -302,7 +302,7 @@ class _Cabecalho extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Filtros',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -311,7 +311,7 @@ class _Cabecalho extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.tune_rounded, color: AppColors.primary, size: 18),
+                Icon(Icons.tune_rounded, color: AppColors.primary, size: 18),
               ],
             ),
           ),
@@ -329,7 +329,7 @@ class _TituloSecao extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       texto,
-      style: const TextStyle(
+      style: TextStyle(
         color: AppColors.textPrimary,
         fontSize: 16,
         fontWeight: FontWeight.w600,
@@ -476,7 +476,7 @@ class _GraficoDesempenho extends StatelessWidget {
                       interval: intervaloEixoY.toDouble(),
                       getTitlesWidget: (value, meta) => Text(
                         _valorCompacto(value),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
                       ),
                     ),
                   ),
@@ -492,7 +492,7 @@ class _GraficoDesempenho extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             _diaAbreviado(dias[indice].dia),
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
                           ),
                         );
                       },
@@ -552,7 +552,7 @@ class _LegendaGrafico extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
+      children: [
         _ItemLegenda(cor: AppColors.receita, texto: 'Receita'),
         SizedBox(width: 16),
         _ItemLegenda(cor: AppColors.lucro, texto: 'Lucro'),
@@ -577,7 +577,7 @@ class _ItemLegenda extends StatelessWidget {
           decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(texto, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(texto, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       ],
     );
   }
@@ -608,7 +608,7 @@ class _ValoresPorDia extends StatelessWidget {
               children: [
                 Text(
                   '${d.dia.day.toString().padLeft(2, '0')}/${d.dia.month.toString().padLeft(2, '0')}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textDisabled,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -617,11 +617,11 @@ class _ValoresPorDia extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   Formatters.moeda(d.receita),
-                  style: const TextStyle(color: AppColors.receita, fontSize: 11.5),
+                  style: TextStyle(color: AppColors.receita, fontSize: 11.5),
                 ),
                 Text(
                   Formatters.moeda(d.lucro),
-                  style: const TextStyle(color: AppColors.lucro, fontSize: 11.5),
+                  style: TextStyle(color: AppColors.lucro, fontSize: 11.5),
                 ),
               ],
             ),
@@ -660,7 +660,7 @@ class _MetaDiaria extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Meta diária',
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -670,7 +670,7 @@ class _MetaDiaria extends StatelessWidget {
                   ),
                   Text(
                     '${Formatters.moeda(receita)} / ${Formatters.moeda(meta)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -720,7 +720,7 @@ class _EstadoVazioGrafico extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Text(
+      child: Text(
         'Registre seus ganhos para ver o gráfico aqui',
         style: TextStyle(color: AppColors.textSecondary),
       ),
@@ -758,7 +758,7 @@ class _ListaUltimosLancamentos extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Text(
+        child: Text(
           'Nenhum lançamento ainda',
           style: TextStyle(color: AppColors.textSecondary),
         ),
@@ -783,10 +783,10 @@ class _ListaUltimosLancamentos extends StatelessWidget {
                 size: 18,
               ),
             ),
-            title: Text(item.titulo, style: const TextStyle(color: AppColors.textPrimary)),
+            title: Text(item.titulo, style: TextStyle(color: AppColors.textPrimary)),
             subtitle: Text(
               Formatters.data(item.data),
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
             ),
             trailing: Text(
               '${item.positivo ? '+' : '-'} ${Formatters.moeda(item.valor)}',

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/configuracoes.dart';
 import '../../providers/configuracoes_provider.dart';
+import '../../providers/tema_provider.dart';
 
 class ConfiguracoesScreen extends StatefulWidget {
   const ConfiguracoesScreen({super.key});
@@ -80,7 +81,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Configurações salvas'),
         backgroundColor: AppColors.primary,
       ),
@@ -95,7 +96,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
         child: Consumer<ConfiguracoesProvider>(
           builder: (context, provider, _) {
             if (provider.carregando) {
-              return const Center(
+              return Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               );
             }
@@ -128,6 +129,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                       _campoNumero(_gasolinaController, 'Valor atual da gasolina', prefixo: 'R\$ '),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  _secaoTema(),
                   const SizedBox(height: 20),
                   _secao(
                     titulo: 'Metas',
@@ -164,6 +167,82 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
     );
   }
 
+  Widget _secaoTema() {
+    return Consumer<TemaProvider>(
+      builder: (context, tema, _) {
+        return _secao(
+          titulo: 'Aparência',
+          icone: Icons.dark_mode_rounded,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _opcaoTema(
+                    selecionado: tema.temaEscuro,
+                    icone: Icons.dark_mode_rounded,
+                    texto: 'Escuro',
+                    onTap: () => tema.definir(escuro: true),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _opcaoTema(
+                    selecionado: !tema.temaEscuro,
+                    icone: Icons.light_mode_rounded,
+                    texto: 'Claro',
+                    onTap: () => tema.definir(escuro: false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'O tema claro foi pensado para facilitar a leitura sob luz do sol.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _opcaoTema({
+    required bool selecionado,
+    required IconData icone,
+    required String texto,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selecionado ? AppColors.primary.withOpacity(0.15) : AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selecionado ? AppColors.primary : AppColors.border,
+            width: selecionado ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icone, color: selecionado ? AppColors.primary : AppColors.textSecondary, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              texto,
+              style: TextStyle(
+                color: selecionado ? AppColors.textPrimary : AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: selecionado ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _secao({
     required String titulo,
     required IconData icone,
@@ -185,7 +264,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
               const SizedBox(width: 10),
               Text(
                 titulo,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -203,12 +282,12 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
   Widget _campoTexto(TextEditingController controller, String label, {String? hint}) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: AppColors.textPrimary),
+      style: TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        labelStyle: TextStyle(color: AppColors.textSecondary),
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textDisabled),
+        hintStyle: TextStyle(color: AppColors.textDisabled),
       ),
     );
   }
@@ -222,10 +301,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: const TextStyle(color: AppColors.textPrimary),
+      style: TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        labelStyle: TextStyle(color: AppColors.textSecondary),
         prefixText: prefixo,
         suffixText: sufixo,
       ),

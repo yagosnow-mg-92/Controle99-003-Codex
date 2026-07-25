@@ -208,7 +208,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               children: [
                 _formulario(provider),
                 const SizedBox(height: 28),
-                const Text(
+                Text(
                   'Lançamentos recentes',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -217,7 +217,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   'Toque duas vezes num lançamento para ver ou editar',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
@@ -260,7 +260,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                       const SizedBox(width: 6),
                       Text(
                         _somenteLeitura ? 'Visualizando lançamento' : 'Editando lançamento',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.primary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -271,7 +271,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                   InkWell(
                     onTap: _cancelarVisualizacao,
                     borderRadius: BorderRadius.circular(20),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(4),
                       child: Icon(Icons.close_rounded, size: 20, color: AppColors.textSecondary),
                     ),
@@ -289,12 +289,12 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
             const SizedBox(height: 14),
             DropdownButtonFormField<TipoReceita>(
               value: _tipoSelecionado,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Tipo de lançamento',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
               ),
               dropdownColor: AppColors.surfaceElevated,
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: AppColors.textPrimary),
               items: TipoReceita.values
                   .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo.descricao)))
                   .toList(),
@@ -308,8 +308,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               focusNode: _kmFocusNode,
               enabled: !_somenteLeitura,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Quilômetros rodados',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 suffixText: 'km',
@@ -325,8 +325,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               controller: _valorController,
               enabled: !_somenteLeitura,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Valor recebido',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixText: 'R\$ ',
@@ -344,8 +344,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
             TextFormField(
               controller: _observacaoController,
               enabled: !_somenteLeitura,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Observação (opcional)',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
               ),
@@ -354,8 +354,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
             TextFormField(
               controller: _embarqueController,
               enabled: !_somenteLeitura,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Local de embarque (opcional)',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixIcon: Icon(Icons.trip_origin_rounded, color: AppColors.textSecondary, size: 20),
@@ -365,8 +365,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
             TextFormField(
               controller: _destinoController,
               enabled: !_somenteLeitura,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Local de destino (opcional)',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixIcon: Icon(Icons.location_on_rounded, color: AppColors.textSecondary, size: 20),
@@ -395,17 +395,17 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.timer_outlined, size: 18, color: AppColors.textSecondary),
+          Icon(Icons.timer_outlined, size: 18, color: AppColors.textSecondary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               '${horaFormatada.format(r.horaInicio!)} até ${horaFormatada.format(r.horaFim!)}',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
           Text(
             Formatters.duracao(duracao),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -451,7 +451,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                 label: const Text('Ver mapa do trajeto'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.lucro,
-                  side: const BorderSide(color: AppColors.lucro),
+                  side: BorderSide(color: AppColors.lucro),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
@@ -466,7 +466,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               label: const Text('Editar'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
+                side: BorderSide(color: AppColors.primary),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
@@ -484,7 +484,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               onPressed: provider.salvando ? null : _cancelarVisualizacao,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
-                side: const BorderSide(color: AppColors.border),
+                side: BorderSide(color: AppColors.border),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text('Cancelar'),
@@ -538,11 +538,11 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textSecondary),
+              Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 12),
               Text(
                 Formatters.data(_dataSelecionada),
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
               ),
             ],
           ),
@@ -561,13 +561,13 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Valor por Km',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           Text(
             Formatters.moeda(_valorPorKmPreview),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.receita,
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -584,22 +584,22 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Excluir lançamento?',
           style: TextStyle(color: AppColors.textPrimary),
         ),
         content: Text(
           'Receita de ${Formatters.moeda(receita.valorRecebido)} do dia ${Formatters.data(receita.data)} será excluída permanentemente.',
-          style: const TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Excluir', style: TextStyle(color: AppColors.despesa)),
+            child: Text('Excluir', style: TextStyle(color: AppColors.despesa)),
           ),
         ],
       ),
@@ -610,8 +610,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
   Widget _campoBusca() {
     return TextField(
       onChanged: (texto) => setState(() => _buscaTexto = texto),
-      style: const TextStyle(color: AppColors.textPrimary),
-      decoration: const InputDecoration(
+      style: TextStyle(color: AppColors.textPrimary),
+      decoration: InputDecoration(
         hintText: 'Buscar por valor, km ou observação...',
         hintStyle: TextStyle(color: AppColors.textDisabled),
         prefixIcon: Icon(Icons.search_rounded, color: AppColors.textSecondary),
@@ -621,7 +621,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
 
   Widget _listaLancamentos(ReceitaProvider provider) {
     if (provider.carregando) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
@@ -656,7 +656,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                   ? 'Nenhuma corrida lançada ainda'
                   : 'Nenhuma receita lançada ainda'
               : 'Nenhum resultado para "$_buscaTexto"',
-          style: const TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
       );
     }
@@ -682,7 +682,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                 color: AppColors.despesa.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.delete_outline_rounded, color: AppColors.despesa),
+              child: Icon(Icons.delete_outline_rounded, color: AppColors.despesa),
             ),
             onDismissed: (_) async {
               await context.read<ReceitaProvider>().excluir(r.id);
@@ -691,27 +691,27 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               }
             },
             child: ListTile(
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 backgroundColor: AppColors.receitaSoft,
                 child: Icon(Icons.arrow_upward_rounded, color: AppColors.receita, size: 18),
               ),
               title: Text(
                 Formatters.moeda(r.valorRecebido),
-                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${r.tipo.descricao} · ${Formatters.data(r.data)} · ${Formatters.km(r.kmRodados)} · ${Formatters.moeda(r.valorPorKm)}/km',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
                   ),
                   if (r.localEmbarque != null || r.localDestino != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         '${r.localEmbarque ?? '?'} → ${r.localDestino ?? '?'}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

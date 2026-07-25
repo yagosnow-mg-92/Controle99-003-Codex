@@ -55,7 +55,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
                 _filtrosPeriodo(provider),
                 const SizedBox(height: 20),
                 if (provider.carregando)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),
                     child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   )
@@ -142,14 +142,14 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Lucro líquido do período',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 6),
           Text(
             Formatters.moeda(resumo.lucroLiquido),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 30,
               fontWeight: FontWeight.w800,
@@ -158,7 +158,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
           const SizedBox(height: 4),
           Text(
             '${Formatters.percentual(resumo.percentualLucro)} de margem',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.lucro,
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -291,7 +291,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
                       interval: intervaloEixoY,
                       getTitlesWidget: (value, meta) => Text(
                         _valorCompactoIndicadores(value),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
                       ),
                     ),
                   ),
@@ -309,7 +309,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             '${dia.day.toString().padLeft(2, '0')}/${dia.month.toString().padLeft(2, '0')}',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
                           ),
                         );
                       },
@@ -409,7 +409,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         historico[indice].mes,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
                       ),
                     );
                   },
@@ -446,7 +446,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
-      child: Text(mensagem, style: const TextStyle(color: AppColors.textSecondary)),
+      child: Text(mensagem, style: TextStyle(color: AppColors.textSecondary)),
     );
   }
 
@@ -493,7 +493,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         texto,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                       ),
                     );
                   },
@@ -542,7 +542,7 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Text(
+        child: Text(
           'Nenhuma despesa no período',
           style: TextStyle(color: AppColors.textSecondary),
         ),
@@ -604,12 +604,12 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
                   Expanded(
                     child: Text(
                       entry.key,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                     ),
                   ),
                   Text(
                     Formatters.moeda(entry.value),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
@@ -792,7 +792,7 @@ class _TituloSecao extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       texto,
-      style: const TextStyle(
+      style: TextStyle(
         color: AppColors.textPrimary,
         fontSize: 16,
         fontWeight: FontWeight.w600,
@@ -817,7 +817,7 @@ class _ItemLegendaIndicadores extends StatelessWidget {
           decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(texto, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(texto, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       ],
     );
   }
