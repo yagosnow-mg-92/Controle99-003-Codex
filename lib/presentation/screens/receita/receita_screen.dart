@@ -316,7 +316,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               ),
               validator: (valor) {
                 final numero = double.tryParse((valor ?? '').replaceAll(',', '.'));
-                if (numero == null || numero <= 0) return 'Informe um valor de km válido';
+                if (numero == null || numero < 0) return 'Informe um valor de km válido';
                 return null;
               },
             ),
@@ -334,9 +334,6 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
               validator: (valor) {
                 final numero = double.tryParse((valor ?? '').replaceAll(',', '.'));
                 if (numero == null || numero < 0) return 'Informe um valor recebido válido';
-                if (_tipoSelecionado != TipoReceita.deslocamentoLivre && numero == 0) {
-                  return 'Informe um valor recebido válido';
-                }
                 return null;
               },
             ),

@@ -31,9 +31,10 @@ class _CorridaScreenState extends State<CorridaScreen> {
     required String titulo,
     required String mensagem,
     double? valorInicial,
+    bool permitirZero = false,
   }) async {
     final controller = TextEditingController(
-      text: valorInicial != null ? valorInicial.toStringAsFixed(2) : '',
+      text: valorInicial != null && valorInicial > 0 ? valorInicial.toStringAsFixed(2) : (valorInicial == 0 ? '0' : ''),
     );
     return showDialog<double>(
       context: context,
@@ -72,8 +73,10 @@ class _CorridaScreenState extends State<CorridaScreen> {
           ),
           TextButton(
             onPressed: () {
-              final valor = double.tryParse(controller.text.replaceAll(',', '.'));
-              if (valor == null || valor <= 0) return;
+              final texto = controller.text.trim().replaceAll(',', '.');
+              final valor = texto.isEmpty ? (permitirZero ? 0.0 : null) : double.tryParse(texto);
+              if (valor == null) return;
+              if (permitirZero ? valor < 0 : valor <= 0) return;
               Navigator.of(context).pop(valor);
             },
             child: Text('Confirmar', style: TextStyle(color: AppColors.primary)),
@@ -142,7 +145,8 @@ class _CorridaScreenState extends State<CorridaScreen> {
             final valor = await _pedirValor(
               titulo: 'Cancelar corrida',
               mensagem: 'Informe o valor da taxa de deslocamento (geralmente diferente do valor da corrida).',
-              valorInicial: provider.corridaAtual?.valor,
+              valorInicial: 0,
+              permitirZero: true,
             );
             if (valor != null) {
               await provider.cancelarCorrida(valor);
