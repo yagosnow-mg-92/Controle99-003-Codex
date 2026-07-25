@@ -33,6 +33,7 @@ class ReceitaProvider extends ChangeNotifier {
     required double kmRodados,
     required double valorRecebido,
     String? observacao,
+    String? localInicio,
     String? localEmbarque,
     String? localDestino,
     TipoReceita tipo = TipoReceita.outro,
@@ -55,6 +56,7 @@ class ReceitaProvider extends ChangeNotifier {
       valorRecebido: valorRecebido,
       observacao: (observacao == null || observacao.trim().isEmpty) ? null : observacao.trim(),
       criadoEm: criadoEm,
+      localInicio: (localInicio == null || localInicio.trim().isEmpty) ? null : localInicio.trim(),
       localEmbarque: (localEmbarque == null || localEmbarque.trim().isEmpty)
           ? null
           : localEmbarque.trim(),

@@ -73,6 +73,7 @@ class ReceitaRepositoryImpl implements ReceitaRepository {
       'valor_por_km': r.valorPorKm,
       'observacao': r.observacao,
       'criado_em': r.criadoEm.toIso8601String(),
+      'local_inicio': r.localInicio,
       'local_embarque': r.localEmbarque,
       'local_destino': r.localDestino,
       'tipo': r.tipo.name,
@@ -89,6 +90,7 @@ class ReceitaRepositoryImpl implements ReceitaRepository {
       valorRecebido: (map['valor_recebido'] as num).toDouble(),
       observacao: map['observacao'] as String?,
       criadoEm: DateTime.parse(map['criado_em'] as String),
+      localInicio: map['local_inicio'] as String?,
       localEmbarque: map['local_embarque'] as String?,
       localDestino: map['local_destino'] as String?,
       tipo: TipoReceita.values.firstWhere(

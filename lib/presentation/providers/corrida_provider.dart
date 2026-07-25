@@ -132,7 +132,10 @@ class CorridaProvider extends ChangeNotifier {
     return (lat: posicao.latitude, lng: posicao.longitude, rua: endereco.rua, bairro: endereco.bairro);
   }
 
-  Future<void> _registrarEvento(String sessaoId, TipoEvento tipo) async {
+  Future<({double? lat, double? lng, String? rua, String? bairro})> _registrarEvento(
+    String sessaoId,
+    TipoEvento tipo,
+  ) async {
     final local = await _capturarLocalizacao();
     enderecoAtual = [local.rua, local.bairro].where((s) => s != null && s.isNotEmpty).join(', ');
 
@@ -146,6 +149,7 @@ class CorridaProvider extends ChangeNotifier {
       rua: local.rua,
       bairro: local.bairro,
     ));
+    return local;
   }
 
   /// Etapa 1: Ficar online. Pede permissões, cria a sessão, inicia o
@@ -193,22 +197,28 @@ class CorridaProvider extends ChangeNotifier {
     // corrida, é um deslocamento sem remuneração e precisa ficar separado da
     // receita da corrida.
     await _lancarDeslocamentoLivreSeNecessario();
-    await _registrarEvento(sessaoAtual!.id, TipoEvento.iniciouCorrida);
-    // Guarda como fallback de "local de embarque": se a corrida for
-    // cancelada antes de pegar o passageiro, é o melhor endereço que
-    // temos. Se o passageiro for pego de fato, `pegarPassageiro()`
-    // substitui por um endereço mais preciso.
-    final enderecoInicio = enderecoAtual;
+    // Este é o local de INÍCIO — o motociclista ainda está a caminho do
+    // passageiro. O local de embarque de verdade só é gravado em
+    // pegarPassageiro(); se a corrida for cancelada antes disso, o
+    // embarque fica vazio de propósito (nunca aconteceu).
+    final localInicio = await _registrarEvento(sessaoAtual!.id, TipoEvento.iniciouCorrida);
 
     final corrida = await _repository.criarCorrida(
       sessaoId: sessaoAtual!.id,
       horaInicio: DateTime.now(),
       valor: valor,
     );
-    corridaAtual = corrida.copyWith(localEmbarque: enderecoInicio);
-    if (enderecoInicio != null) {
-      await _repository.atualizarLocalEmbarque(corrida.id, enderecoInicio);
-    }
+    corridaAtual = corrida.copyWith(
+      localInicio: enderecoAtual,
+      localInicioLat: localInicio.lat,
+      localInicioLng: localInicio.lng,
+    );
+    await _repository.atualizarLocalInicio(
+      corrida.id,
+      local: enderecoAtual,
+      lat: localInicio.lat,
+      lng: localInicio.lng,
+    );
     await _registrarPosicaoAtualObrigatoria();
     await ForegroundTaskService.atualizarSessao(
       sessaoId: sessaoAtual!.id,
@@ -233,7 +243,7 @@ class CorridaProvider extends ChangeNotifier {
     notifyListeners();
 
     await _registrarPosicaoAtualObrigatoria();
-    await _registrarEvento(sessaoAtual!.id, TipoEvento.cancelouCorrida);
+    final localFim = await _registrarEvento(sessaoAtual!.id, TipoEvento.cancelouCorrida);
     final enderecoFim = enderecoAtual;
 
     final km = await _calcularKmDaCorrida(corridaAtual!.id);
@@ -244,6 +254,8 @@ class CorridaProvider extends ChangeNotifier {
       horaFimCorrida,
       km,
       localDestino: enderecoFim,
+      localDestinoLat: localFim.lat,
+      localDestinoLng: localFim.lng,
     );
 
     final receitaId = _uuid.v4();
@@ -254,6 +266,7 @@ class CorridaProvider extends ChangeNotifier {
       valorRecebido: valorTaxa,
       observacao: 'Taxa de cancelamento — lançado automaticamente pela função Corrida',
       criadoEm: DateTime.now(),
+      localInicio: corridaAtual!.localInicio,
       localEmbarque: corridaAtual!.localEmbarque,
       localDestino: enderecoFim,
       tipo: TipoReceita.corrida,
@@ -281,12 +294,21 @@ class CorridaProvider extends ChangeNotifier {
     processando = true;
     notifyListeners();
 
-    await _registrarEvento(sessaoAtual!.id, TipoEvento.pegouPassageiro);
+    final localEmbarque = await _registrarEvento(sessaoAtual!.id, TipoEvento.pegouPassageiro);
     final enderecoEmbarque = enderecoAtual;
 
     if (enderecoEmbarque != null) {
-      await _repository.atualizarLocalEmbarque(corridaAtual!.id, enderecoEmbarque);
-      corridaAtual = corridaAtual!.copyWith(localEmbarque: enderecoEmbarque);
+      await _repository.atualizarLocalEmbarque(
+        corridaAtual!.id,
+        local: enderecoEmbarque,
+        lat: localEmbarque.lat,
+        lng: localEmbarque.lng,
+      );
+      corridaAtual = corridaAtual!.copyWith(
+        localEmbarque: enderecoEmbarque,
+        localEmbarqueLat: localEmbarque.lat,
+        localEmbarqueLng: localEmbarque.lng,
+      );
     }
 
     await _repository.atualizarStatusSessao(sessaoAtual!.id, StatusSessao.comPassageiro);
@@ -306,7 +328,7 @@ class CorridaProvider extends ChangeNotifier {
     notifyListeners();
 
     await _registrarPosicaoAtualObrigatoria();
-    await _registrarEvento(sessaoAtual!.id, TipoEvento.finalizouCorrida);
+    final localFim = await _registrarEvento(sessaoAtual!.id, TipoEvento.finalizouCorrida);
     final enderecoFim = enderecoAtual;
 
     final km = await _calcularKmDaCorrida(corridaAtual!.id);
@@ -316,6 +338,8 @@ class CorridaProvider extends ChangeNotifier {
       horaFimCorrida,
       km,
       localDestino: enderecoFim,
+      localDestinoLat: localFim.lat,
+      localDestinoLng: localFim.lng,
     );
 
     final receitaId = _uuid.v4();
@@ -326,6 +350,7 @@ class CorridaProvider extends ChangeNotifier {
       valorRecebido: corridaAtual!.valor,
       observacao: 'Lançado automaticamente pela função Corrida',
       criadoEm: DateTime.now(),
+      localInicio: corridaAtual!.localInicio,
       localEmbarque: corridaAtual!.localEmbarque,
       localDestino: enderecoFim,
       tipo: TipoReceita.corrida,
@@ -400,17 +425,19 @@ class CorridaProvider extends ChangeNotifier {
     final receitaId = _uuid.v4();
     final deslocamentoId = _uuid.v4();
 
-    // Embarque = onde o trecho começou (ficar online, ou fim da corrida
+    // Início = onde o trecho começou (ficar online, ou fim da corrida
     // anterior); destino = onde terminou (iniciar corrida, ou ficar
     // offline). Usamos as coordenadas do primeiro/último ponto GPS
     // gravados nesse trecho, já que representam exatamente esses momentos.
-    // Se ficou parado (km = 0), o destino é o mesmo local do embarque —
+    // Não existe "local de embarque" aqui — deslocamento livre nunca tem
+    // passageiro, só corrida de fato tem esse campo preenchido.
+    // Se ficou parado (km = 0), o destino é o mesmo local do início —
     // não precisa geocodificar de novo.
     final enderecoInicio = await _geo.enderecoDe(pontos.first.latitude, pontos.first.longitude);
     final enderecoFim = km == 0
         ? enderecoInicio
         : await _geo.enderecoDe(pontos.last.latitude, pontos.last.longitude);
-    final localEmbarque = [enderecoInicio.rua, enderecoInicio.bairro]
+    final localInicio = [enderecoInicio.rua, enderecoInicio.bairro]
         .where((s) => s != null && s.isNotEmpty)
         .join(', ');
     final localDestino = [enderecoFim.rua, enderecoFim.bairro]
@@ -427,7 +454,7 @@ class CorridaProvider extends ChangeNotifier {
           : 'Deslocamento livre — lançado automaticamente pelo GPS',
       criadoEm: agora,
       tipo: TipoReceita.deslocamentoLivre,
-      localEmbarque: localEmbarque.isEmpty ? null : localEmbarque,
+      localInicio: localInicio.isEmpty ? null : localInicio,
       localDestino: localDestino.isEmpty ? null : localDestino,
       horaInicio: pontos.first.timestamp,
       horaFim: pontos.last.timestamp,

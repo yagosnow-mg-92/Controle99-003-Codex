@@ -6,12 +6,20 @@ import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/ponto_rota.dart';
 
 /// Mostra o trajeto gravado por GPS de uma corrida ou deslocamento livre:
-/// linha conectando os pontos, marcador verde no início e vermelho no fim.
+/// linha conectando os pontos, com marcadores de início (verde), embarque
+/// (roxo, só quando informado — corrida cancelada antes de pegar o
+/// passageiro não tem esse pino) e destino (vermelho).
 class MapaTrajetoScreen extends StatelessWidget {
   final List<PontoRota> pontos;
   final String titulo;
+  final LatLng? embarque;
 
-  const MapaTrajetoScreen({super.key, required this.pontos, required this.titulo});
+  const MapaTrajetoScreen({
+    super.key,
+    required this.pontos,
+    required this.titulo,
+    this.embarque,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +45,10 @@ class MapaTrajetoScreen extends StatelessWidget {
       body: FlutterMap(
         options: MapOptions(
           initialCameraFit: CameraFit.coordinates(
-            coordinates: coordenadas,
+            coordinates: [
+              ...coordenadas,
+              if (embarque != null) embarque!,
+            ],
             padding: const EdgeInsets.fromLTRB(40, 80, 40, 40),
           ),
         ),
@@ -59,6 +70,13 @@ class MapaTrajetoScreen extends StatelessWidget {
                 height: 36,
                 child: _PinoMapa(cor: AppColors.receita, icone: Icons.trip_origin_rounded),
               ),
+              if (embarque != null)
+                Marker(
+                  point: embarque!,
+                  width: 36,
+                  height: 36,
+                  child: _PinoMapa(cor: AppColors.primary, icone: Icons.person_pin_circle_rounded),
+                ),
               if (fim != inicio)
                 Marker(
                   point: fim,

@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -40,6 +40,7 @@ class DatabaseHelper {
         criado_em TEXT NOT NULL,
         local_embarque TEXT,
         local_destino TEXT,
+        local_inicio TEXT,
         tipo TEXT NOT NULL DEFAULT 'outro',
         hora_inicio TEXT,
         hora_fim TEXT
@@ -144,6 +145,22 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE receitas ADD COLUMN hora_inicio TEXT');
       await db.execute('ALTER TABLE receitas ADD COLUMN hora_fim TEXT');
     }
+    if (oldVersion < 8) {
+      // Separa "onde comecei a dirigir atrás do passageiro" (local_inicio)
+      // de "onde peguei o passageiro de fato" (local_embarque, que antes
+      // era preenchido incorretamente com o local de início). As colunas
+      // de latitude/longitude existem para o mapa do trajeto poder marcar
+      // os três pontos (início, embarque, destino), não só os dois
+      // extremos da trilha bruta de GPS.
+      await db.execute('ALTER TABLE receitas ADD COLUMN local_inicio TEXT');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_inicio TEXT');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_inicio_lat REAL');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_inicio_lng REAL');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_embarque_lat REAL');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_embarque_lng REAL');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_destino_lat REAL');
+      await db.execute('ALTER TABLE corridas ADD COLUMN local_destino_lng REAL');
+    }
   }
 
   Future<void> _criarTabelasCorrida(Database db) async {
@@ -186,7 +203,14 @@ class DatabaseHelper {
         km_percorrido REAL NOT NULL DEFAULT 0,
         receita_id TEXT,
         local_embarque TEXT,
-        local_destino TEXT
+        local_destino TEXT,
+        local_inicio TEXT,
+        local_inicio_lat REAL,
+        local_inicio_lng REAL,
+        local_embarque_lat REAL,
+        local_embarque_lng REAL,
+        local_destino_lat REAL,
+        local_destino_lng REAL
       )
     ''');
 

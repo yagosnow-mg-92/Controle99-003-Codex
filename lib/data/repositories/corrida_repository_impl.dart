@@ -105,8 +105,15 @@ class CorridaRepositoryImpl implements CorridaRepository {
       'cancelada': 0,
       'km_percorrido': 0,
       'receita_id': null,
+      'local_inicio': null,
+      'local_inicio_lat': null,
+      'local_inicio_lng': null,
       'local_embarque': null,
+      'local_embarque_lat': null,
+      'local_embarque_lng': null,
       'local_destino': null,
+      'local_destino_lat': null,
+      'local_destino_lng': null,
     });
     return corrida;
   }
@@ -138,11 +145,32 @@ class CorridaRepositoryImpl implements CorridaRepository {
   }
 
   @override
-  Future<void> atualizarLocalEmbarque(String corridaId, String? local) async {
+  Future<void> atualizarLocalInicio(
+    String corridaId, {
+    String? local,
+    double? lat,
+    double? lng,
+  }) async {
     final db = await _dbHelper.database;
     await db.update(
       'corridas',
-      {'local_embarque': local},
+      {'local_inicio': local, 'local_inicio_lat': lat, 'local_inicio_lng': lng},
+      where: 'id = ?',
+      whereArgs: [corridaId],
+    );
+  }
+
+  @override
+  Future<void> atualizarLocalEmbarque(
+    String corridaId, {
+    String? local,
+    double? lat,
+    double? lng,
+  }) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'corridas',
+      {'local_embarque': local, 'local_embarque_lat': lat, 'local_embarque_lng': lng},
       where: 'id = ?',
       whereArgs: [corridaId],
     );
@@ -154,6 +182,8 @@ class CorridaRepositoryImpl implements CorridaRepository {
     DateTime horaFim,
     double kmPercorrido, {
     String? localDestino,
+    double? localDestinoLat,
+    double? localDestinoLng,
   }) async {
     final db = await _dbHelper.database;
     await db.update(
@@ -162,10 +192,20 @@ class CorridaRepositoryImpl implements CorridaRepository {
         'hora_fim': horaFim.toIso8601String(),
         'km_percorrido': kmPercorrido,
         if (localDestino != null) 'local_destino': localDestino,
+        if (localDestinoLat != null) 'local_destino_lat': localDestinoLat,
+        if (localDestinoLng != null) 'local_destino_lng': localDestinoLng,
       },
       where: 'id = ?',
       whereArgs: [corridaId],
     );
+  }
+
+  @override
+  Future<Corrida?> corridaPorReceita(String receitaId) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query('corridas', where: 'receita_id = ?', whereArgs: [receitaId]);
+    if (rows.isEmpty) return null;
+    return _corridaFromMap(rows.first);
   }
 
   @override
@@ -362,8 +402,15 @@ class CorridaRepositoryImpl implements CorridaRepository {
       cancelada: (map['cancelada'] as int) == 1,
       kmPercorrido: (map['km_percorrido'] as num).toDouble(),
       receitaId: map['receita_id'] as String?,
+      localInicio: map['local_inicio'] as String?,
+      localInicioLat: (map['local_inicio_lat'] as num?)?.toDouble(),
+      localInicioLng: (map['local_inicio_lng'] as num?)?.toDouble(),
       localEmbarque: map['local_embarque'] as String?,
+      localEmbarqueLat: (map['local_embarque_lat'] as num?)?.toDouble(),
+      localEmbarqueLng: (map['local_embarque_lng'] as num?)?.toDouble(),
       localDestino: map['local_destino'] as String?,
+      localDestinoLat: (map['local_destino_lat'] as num?)?.toDouble(),
+      localDestinoLng: (map['local_destino_lng'] as num?)?.toDouble(),
     );
   }
 

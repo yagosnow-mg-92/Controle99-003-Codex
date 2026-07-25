@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../domain/entities/filtro_lancamentos.dart';
+import '../../../domain/entities/ponto_rota.dart';
 import '../../../domain/entities/receita.dart';
 import '../../../domain/repositories/corrida_repository.dart';
 import '../../providers/dashboard_provider.dart';
@@ -23,6 +25,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
   final _kmController = TextEditingController();
   final _valorController = TextEditingController();
   final _observacaoController = TextEditingController();
+  final _inicioController = TextEditingController();
   final _embarqueController = TextEditingController();
   final _destinoController = TextEditingController();
   final _kmFocusNode = FocusNode();
@@ -60,6 +63,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     _kmController.dispose();
     _valorController.dispose();
     _observacaoController.dispose();
+    _inicioController.dispose();
     _embarqueController.dispose();
     _destinoController.dispose();
     _kmFocusNode.dispose();
@@ -82,6 +86,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     _kmController.text = r.kmRodados.toString();
     _valorController.text = r.valorRecebido.toString();
     _observacaoController.text = r.observacao ?? '';
+    _inicioController.text = r.localInicio ?? '';
     _embarqueController.text = r.localEmbarque ?? '';
     _destinoController.text = r.localDestino ?? '';
 
@@ -114,6 +119,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     _kmController.clear();
     _valorController.clear();
     _observacaoController.clear();
+    _inicioController.clear();
     _embarqueController.clear();
     _destinoController.clear();
     setState(() {
@@ -154,6 +160,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
           kmRodados: km,
           valorRecebido: valor,
           observacao: _observacaoController.text,
+          localInicio: _inicioController.text,
           localEmbarque: _embarqueController.text,
           localDestino: _destinoController.text,
           tipo: _tipoSelecionado,
@@ -170,6 +177,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     _kmController.clear();
     _valorController.clear();
     _observacaoController.clear();
+    _inicioController.clear();
     _embarqueController.clear();
     _destinoController.clear();
     setState(() {
@@ -349,6 +357,17 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
             ),
             const SizedBox(height: 14),
             TextFormField(
+              controller: _inicioController,
+              enabled: !_somenteLeitura,
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Local de início (opcional)',
+                labelStyle: TextStyle(color: AppColors.textSecondary),
+                prefixIcon: Icon(Icons.flag_rounded, color: AppColors.textSecondary, size: 20),
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
               controller: _embarqueController,
               enabled: !_somenteLeitura,
               style: TextStyle(color: AppColors.textPrimary),
@@ -418,9 +437,17 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     if (receita == null || !receita.temTrajetoGps) return;
 
     final repository = context.read<CorridaRepository>();
-    final pontos = receita.tipo == TipoReceita.corrida
-        ? await repository.pontosDaCorridaPorReceita(receita.id)
-        : await repository.pontosDoDeslocamentoPorReceita(receita.id);
+    LatLng? embarque;
+    List<PontoRota> pontos;
+    if (receita.tipo == TipoReceita.corrida) {
+      pontos = await repository.pontosDaCorridaPorReceita(receita.id);
+      final corrida = await repository.corridaPorReceita(receita.id);
+      if (corrida?.localEmbarqueLat != null && corrida?.localEmbarqueLng != null) {
+        embarque = LatLng(corrida!.localEmbarqueLat!, corrida.localEmbarqueLng!);
+      }
+    } else {
+      pontos = await repository.pontosDoDeslocamentoPorReceita(receita.id);
+    }
 
     if (!mounted) return;
     Navigator.of(context).push(
@@ -428,6 +455,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
         builder: (_) => MapaTrajetoScreen(
           pontos: pontos,
           titulo: receita.tipo == TipoReceita.corrida ? 'Trajeto da corrida' : 'Trajeto do deslocamento',
+          embarque: embarque,
         ),
       ),
     );
@@ -703,11 +731,11 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                     '${r.tipo.descricao} · ${Formatters.data(r.data)} · ${Formatters.km(r.kmRodados)} · ${Formatters.moeda(r.valorPorKm)}/km',
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
                   ),
-                  if (r.localEmbarque != null || r.localDestino != null)
+                  if (r.localInicio != null || r.localEmbarque != null || r.localDestino != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        '${r.localEmbarque ?? '?'} → ${r.localDestino ?? '?'}',
+                        '${r.localEmbarque ?? r.localInicio ?? '?'} → ${r.localDestino ?? '?'}',
                         style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

@@ -14,6 +14,10 @@ class Receita {
   final double valorRecebido;
   final String? observacao;
   final DateTime criadoEm;
+
+  /// Onde o motociclista estava ao iniciar a corrida (ainda a caminho do
+  /// passageiro) — nulo em deslocamento livre e lançamentos manuais.
+  final String? localInicio;
   final String? localEmbarque;
   final String? localDestino;
   final TipoReceita tipo;
@@ -31,6 +35,7 @@ class Receita {
     required this.valorRecebido,
     this.observacao,
     required this.criadoEm,
+    this.localInicio,
     this.localEmbarque,
     this.localDestino,
     this.tipo = TipoReceita.outro,
@@ -54,6 +59,7 @@ class Receita {
     double? valorRecebido,
     String? observacao,
     DateTime? criadoEm,
+    String? localInicio,
     String? localEmbarque,
     String? localDestino,
     TipoReceita? tipo,
@@ -67,6 +73,7 @@ class Receita {
       valorRecebido: valorRecebido ?? this.valorRecebido,
       observacao: observacao ?? this.observacao,
       criadoEm: criadoEm ?? this.criadoEm,
+      localInicio: localInicio ?? this.localInicio,
       localEmbarque: localEmbarque ?? this.localEmbarque,
       localDestino: localDestino ?? this.localDestino,
       tipo: tipo ?? this.tipo,

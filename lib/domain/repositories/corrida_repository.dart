@@ -23,16 +23,27 @@ abstract class CorridaRepository {
   Future<Corrida?> corridaAberta(String sessaoId);
   Future<void> atualizarValorCorrida(String corridaId, double novoValor, {bool? cancelada});
 
+  /// Chamado ao "Iniciar corrida" — grava de onde o motociclista partiu
+  /// (ainda a caminho do passageiro).
+  Future<void> atualizarLocalInicio(String corridaId, {String? local, double? lat, double? lng});
+
   /// Chamado ao "Peguei o passageiro" — grava onde o embarque aconteceu.
-  Future<void> atualizarLocalEmbarque(String corridaId, String? local);
+  Future<void> atualizarLocalEmbarque(String corridaId, {String? local, double? lat, double? lng});
 
   Future<void> finalizarCorrida(
     String corridaId,
     DateTime horaFim,
     double kmPercorrido, {
     String? localDestino,
+    double? localDestinoLat,
+    double? localDestinoLng,
   });
   Future<void> vincularReceita(String corridaId, String receitaId);
+
+  /// Busca a corrida a partir do id da receita gerada por ela — usado
+  /// pelo mapa do trajeto, que precisa das coordenadas de início/embarque/
+  /// destino, não só do id da receita.
+  Future<Corrida?> corridaPorReceita(String receitaId);
 
   Future<void> registrarPontoRota(PontoRota ponto);
   /// Pontos aprovados pelo filtro rápido de telemetria.
