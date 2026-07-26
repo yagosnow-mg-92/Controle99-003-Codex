@@ -196,6 +196,18 @@ class CorridaProvider extends ChangeNotifier {
     processando = true;
     notifyListeners();
 
+    // Capturado ANTES de qualquer await lento (flush do deslocamento livre,
+    // busca de GPS, geocodificação) de propósito: é este horário que
+    // `reivindicarPontosPorHorario` usa depois, no finalizarCorrida, como
+    // limite inferior para "reclamar de volta" pontos que chegaram órfãos
+    // (sem corrida_id) nessa corrida entre apertar o botão e o serviço de
+    // GPS em segundo plano saber qual corrida está ativa. Se capturássemos
+    // isso só depois desses awaits — que podem levar mais de um segundo —
+    // pontos que vazaram bem no início ficariam de fora dessa reivindicação
+    // e sobrariam pro próximo deslocamento livre, criando um lançamento
+    // fantasma que reaproveita o trajeto desta própria corrida.
+    final horaInicio = DateTime.now();
+
     // Tudo que foi percorrido enquanto estava online, antes de aceitar esta
     // corrida, é um deslocamento sem remuneração e precisa ficar separado da
     // receita da corrida.
@@ -214,7 +226,7 @@ class CorridaProvider extends ChangeNotifier {
 
     final corrida = await _repository.criarCorrida(
       sessaoId: sessaoAtual!.id,
-      horaInicio: DateTime.now(),
+      horaInicio: horaInicio,
       valor: valor,
     );
     corridaAtual = corrida.copyWith(
