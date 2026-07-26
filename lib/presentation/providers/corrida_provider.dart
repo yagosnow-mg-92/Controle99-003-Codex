@@ -177,9 +177,12 @@ class CorridaProvider extends ChangeNotifier {
     sessaoAtual = sessao;
     tempoDecorrido = Duration.zero;
 
+    // Busca uma posição fresca ANTES de registrar o evento — é o que
+    // realmente decide qual endereço fica salvo (ver comentário
+    // equivalente em pegarPassageiro()).
+    await _registrarPosicaoAtualObrigatoria();
     await _registrarEvento(sessao.id, TipoEvento.ficouOnline);
     await _retomarRastreamento();
-    await _registrarPosicaoAtualObrigatoria();
 
     processando = false;
     notifyListeners();
@@ -197,6 +200,12 @@ class CorridaProvider extends ChangeNotifier {
     // corrida, é um deslocamento sem remuneração e precisa ficar separado da
     // receita da corrida.
     await _lancarDeslocamentoLivreSeNecessario();
+
+    // Busca uma posição fresca ANTES de registrar o evento — sem isso, o
+    // endereço usado seria a última posição recebida pelo stream em
+    // segundo plano (que só atualiza a cada alguns metros/segundos e pode
+    // estar atrasada), não onde o motociclista está agora.
+    await _registrarPosicaoAtualObrigatoria();
     // Este é o local de INÍCIO — o motociclista ainda está a caminho do
     // passageiro. O local de embarque de verdade só é gravado em
     // pegarPassageiro(); se a corrida for cancelada antes disso, o
@@ -219,7 +228,6 @@ class CorridaProvider extends ChangeNotifier {
       lat: localInicio.lat,
       lng: localInicio.lng,
     );
-    await _registrarPosicaoAtualObrigatoria();
     await ForegroundTaskService.atualizarSessao(
       sessaoId: sessaoAtual!.id,
       corridaId: corridaAtual!.id,
@@ -294,6 +302,13 @@ class CorridaProvider extends ChangeNotifier {
     processando = true;
     notifyListeners();
 
+    // Sem isso, o endereço registrado ficava sendo a última posição
+    // recebida pelo stream em segundo plano (que só atualiza a cada
+    // alguns metros e pode estar atrasada) em vez de onde o motociclista
+    // está agora — o mesmo motivo pelo qual todo outro clique importante
+    // (ficar online, iniciar/cancelar/finalizar corrida) já busca uma
+    // posição fresca antes de registrar o evento.
+    await _registrarPosicaoAtualObrigatoria();
     final localEmbarque = await _registrarEvento(sessaoAtual!.id, TipoEvento.pegouPassageiro);
     final enderecoEmbarque = enderecoAtual;
 

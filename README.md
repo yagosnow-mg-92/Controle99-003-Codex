@@ -52,6 +52,7 @@ funcionar direto por cima, sem perder dados nunca mais.
 - [x] Local de embarque/destino (automático via Corrida, opcional em lançamentos manuais) + menu "Mais" (Indicadores/Configurações) + revisão de contraste
 - [x] Tipo de lançamento (Corrida/Deslocamento livre/Outro), km GPS arredondado, lançamento separado de deslocamento sem corrida (com endereço), visualizar/editar lançamento (duplo toque)
 - [x] Lançamento automático mesmo parado (km 0, tempo de espera), horário de início/fim em todo lançamento por GPS, botão "Ver mapa do trajeto" nos lançamentos vindos da função Corrida
+- [x] Correção de precisão do GPS (cálculo de distância recalculado a partir da trilha bruta, com filtro de picos isolados e confirmação de movimento) + declaração de serviço em primeiro plano no Android + tema claro/escuro + local de início separado do embarque
 
 ## Modo Corrida (rastreamento por GPS)
 
