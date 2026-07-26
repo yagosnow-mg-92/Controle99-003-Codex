@@ -288,6 +288,22 @@ class CorridaRepositoryImpl implements CorridaRepository {
   }
 
   @override
+  Future<void> reivindicarPontosPorHorario({
+    required String corridaId,
+    required String sessaoId,
+    required DateTime inicio,
+    required DateTime fim,
+  }) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'pontos_rota',
+      {'corrida_id': corridaId},
+      where: 'sessao_id = ? AND corrida_id IS NULL AND timestamp >= ? AND timestamp <= ?',
+      whereArgs: [sessaoId, inicio.toIso8601String(), fim.toIso8601String()],
+    );
+  }
+
+  @override
   Future<void> salvarDeslocamentoLivre({
     required String id,
     required String sessaoId,

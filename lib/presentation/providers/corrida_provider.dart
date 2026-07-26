@@ -254,9 +254,18 @@ class CorridaProvider extends ChangeNotifier {
     final localFim = await _registrarEvento(sessaoAtual!.id, TipoEvento.cancelouCorrida);
     final enderecoFim = enderecoAtual;
 
+    final horaFimCorrida = DateTime.now();
+    // Mesma correção de finalizarCorrida: reivindica por horário os pontos
+    // que ficaram sem corrida_id pela corrida entre "iniciar corrida" e o
+    // serviço de GPS processar o aviso.
+    await _repository.reivindicarPontosPorHorario(
+      corridaId: corridaAtual!.id,
+      sessaoId: sessaoAtual!.id,
+      inicio: corridaAtual!.horaInicio,
+      fim: horaFimCorrida,
+    );
     final km = await _calcularKmDaCorrida(corridaAtual!.id);
     await _repository.atualizarValorCorrida(corridaAtual!.id, valorTaxa, cancelada: true);
-    final horaFimCorrida = DateTime.now();
     await _repository.finalizarCorrida(
       corridaAtual!.id,
       horaFimCorrida,
@@ -346,8 +355,18 @@ class CorridaProvider extends ChangeNotifier {
     final localFim = await _registrarEvento(sessaoAtual!.id, TipoEvento.finalizouCorrida);
     final enderecoFim = enderecoAtual;
 
-    final km = await _calcularKmDaCorrida(corridaAtual!.id);
     final horaFimCorrida = DateTime.now();
+    // Reivindica, por horário, qualquer ponto que tenha ficado sem
+    // corrida_id por causa da corrida entre o aviso "iniciar corrida" e o
+    // serviço de GPS processá-lo — sem isso, esses pontos vazam pro
+    // próximo cálculo de deslocamento livre e criam um lançamento fantasma.
+    await _repository.reivindicarPontosPorHorario(
+      corridaId: corridaAtual!.id,
+      sessaoId: sessaoAtual!.id,
+      inicio: corridaAtual!.horaInicio,
+      fim: horaFimCorrida,
+    );
+    final km = await _calcularKmDaCorrida(corridaAtual!.id);
     await _repository.finalizarCorrida(
       corridaAtual!.id,
       horaFimCorrida,

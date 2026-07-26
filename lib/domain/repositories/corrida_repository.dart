@@ -53,6 +53,19 @@ abstract class CorridaRepository {
   Future<List<PontoRota>> todosPontosDaSessao(String sessaoId);
 
   Future<List<PontoRota>> pontosDeDeslocamentoNaoLancados(String sessaoId);
+
+  /// Reivindica retroativamente, por horário, pontos de GPS gravados dentro
+  /// da janela de uma corrida mas que ficaram sem `corrida_id` — acontece
+  /// quando um ponto chega bem no instante entre "iniciar corrida" e o
+  /// serviço em segundo plano processar o aviso de qual corrida está
+  /// ativa. Sem isso, esses pontos "órfãos" vazam pro cálculo de
+  /// deslocamento livre e criam um lançamento fantasma.
+  Future<void> reivindicarPontosPorHorario({
+    required String corridaId,
+    required String sessaoId,
+    required DateTime inicio,
+    required DateTime fim,
+  });
   Future<void> marcarPontosComoDeslocamentoLancado(List<String> pontoIds);
   Future<void> salvarDeslocamentoLivre({
     required String id,
