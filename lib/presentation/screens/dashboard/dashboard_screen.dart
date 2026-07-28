@@ -218,6 +218,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _IndicadorReceitaNeon(provider: provider),
                   const SizedBox(height: 12),
                   _IndicadorKmVidro(provider: provider),
+                  const SizedBox(height: 12),
+                  _IndicadorGanhoPorKmElevado(provider: provider),
                   const _MetaDiariaBarraFundo(),
                   const SizedBox(height: 24),
                   const _TituloSecao('Últimos 7 dias'),
@@ -360,6 +362,55 @@ class _IndicadorReceitaNeon extends StatelessWidget {
   }
 }
 
+/// Indicador "Ganhos por Km" — estilo Elevado (3D) do catálogo (`.elevado`):
+/// gradiente sutil de cima pra baixo e sombra em camadas, sem cor de
+/// destaque, dando sensação de "flutuar" sobre o fundo. Valor bruto:
+/// receita total dividida pelo km total (corrida + deslocamento livre),
+/// sem descontar despesa — respeitando o filtro do painel.
+class _IndicadorGanhoPorKmElevado extends StatelessWidget {
+  final DashboardProvider provider;
+  const _IndicadorGanhoPorKmElevado({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.surfaceElevated, AppColors.surface],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 40,
+            spreadRadius: -12,
+            offset: const Offset(0, 20),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Ganhos por Km',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            Formatters.moeda(provider.resumoPeriodo.receitaPorKm),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Indicador "Total de km rodados" — estilo Vidro + marca d'água do
 /// catálogo (`.glass`): fundo translúcido com gradiente e um ícone gigante
 /// apagado no canto. Soma o km de todos os lançamentos de receita
@@ -427,19 +478,14 @@ class _GraficoDesempenho extends StatelessWidget {
   Widget build(BuildContext context) {
     final dias = provider.ultimos7Dias;
 
-    if (dias.isEmpty || dias.every((d) => d.receita == 0 && d.lucro == 0)) {
+    if (dias.isEmpty || dias.every((d) => d.receita == 0)) {
       return const _EstadoVazioGrafico();
     }
 
-    final maiorValor = dias
-        .map((d) => d.receita > d.lucro ? d.receita : d.lucro)
-        .fold<double>(0, (a, b) => a > b ? a : b);
-    final menorValor = dias
-        .map((d) => d.lucro < 0 ? d.lucro : 0.0)
-        .fold<double>(0, (a, b) => a < b ? a : b);
+    final maiorValor = dias.map((d) => d.receita).fold<double>(0, (a, b) => a > b ? a : b);
 
     final maxY = maiorValor == 0 ? 10.0 : maiorValor * 1.25;
-    final minY = menorValor == 0 ? 0.0 : menorValor * 1.25;
+    const minY = 0.0;
     final intervaloEixoY = ((maxY - minY) / 4).clamp(1, double.infinity);
 
     return Container(
@@ -517,7 +563,6 @@ class _GraficoDesempenho extends StatelessWidget {
                 ),
                 lineBarsData: [
                   _linha(dias.map((d) => d.receita).toList(), AppColors.receita),
-                  _linha(dias.map((d) => d.lucro).toList(), AppColors.lucro),
                 ],
               ),
             ),
@@ -567,13 +612,7 @@ class _LegendaGrafico extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _ItemLegenda(cor: AppColors.receita, texto: 'Receita'),
-        SizedBox(width: 16),
-        _ItemLegenda(cor: AppColors.lucro, texto: 'Lucro'),
-      ],
-    );
+    return _ItemLegenda(cor: AppColors.receita, texto: 'Receita');
   }
 }
 
@@ -634,10 +673,6 @@ class _ValoresPorDia extends StatelessWidget {
                 Text(
                   Formatters.moeda(d.receita),
                   style: TextStyle(color: AppColors.receita, fontSize: 11.5),
-                ),
-                Text(
-                  Formatters.moeda(d.lucro),
-                  style: TextStyle(color: AppColors.lucro, fontSize: 11.5),
                 ),
               ],
             ),
