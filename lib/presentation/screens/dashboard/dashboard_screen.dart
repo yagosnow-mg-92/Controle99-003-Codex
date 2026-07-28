@@ -8,7 +8,7 @@ import '../../../domain/entities/filtro_lancamentos.dart';
 import '../../../domain/entities/periodo_filtro.dart';
 import '../../providers/configuracoes_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../widgets/indicador_card.dart';
+
 
 /// Texto amigável para exibir qual período o Dashboard está mostrando.
 String _tituloPeriodo(PeriodoFiltro periodo) {
@@ -28,23 +28,6 @@ String _tituloPeriodo(PeriodoFiltro periodo) {
   }
 }
 
-/// Sufixo usado nos títulos dos cards (ex: "Receita do dia", "Receita da semana").
-String _sufixoPeriodo(PeriodoFiltro periodo) {
-  switch (periodo) {
-    case PeriodoFiltro.dia:
-      return 'do dia';
-    case PeriodoFiltro.semana:
-      return 'da semana';
-    case PeriodoFiltro.mes:
-      return 'do mês';
-    case PeriodoFiltro.trimestre:
-      return 'do trimestre';
-    case PeriodoFiltro.ano:
-      return 'do ano';
-    case PeriodoFiltro.personalizado:
-      return 'do período';
-  }
-}
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -232,11 +215,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onTapFiltros: () => _abrirFiltros(provider),
                   ),
                   const SizedBox(height: 20),
-                  _CardsPrincipais(provider: provider),
-                  if (provider.periodo == PeriodoFiltro.dia) ...[
-                    const SizedBox(height: 16),
-                    const _MetaDiaria(),
-                  ],
+                  _IndicadorReceitaNeon(provider: provider),
+                  const SizedBox(height: 12),
+                  _IndicadorKmVidro(provider: provider),
+                  const _MetaDiariaBarraFundo(),
                   const SizedBox(height: 24),
                   const _TituloSecao('Últimos 7 dias'),
                   const SizedBox(height: 12),
@@ -338,67 +320,101 @@ class _TituloSecao extends StatelessWidget {
   }
 }
 
-class _CardsPrincipais extends StatelessWidget {
+/// Indicador "Receita" — estilo Neon do catálogo (`.neon-card`): fundo
+/// escuro com borda e brilho verde ao redor, para dar destaque ao número
+/// mais importante do painel. Soma todos os lançamentos de receita
+/// (corrida, deslocamento livre e manual) dentro do período filtrado.
+class _IndicadorReceitaNeon extends StatelessWidget {
   final DashboardProvider provider;
-  const _CardsPrincipais({required this.provider});
+  const _IndicadorReceitaNeon({required this.provider});
 
   @override
   Widget build(BuildContext context) {
-    final resumo = provider.resumoPeriodo;
-    final sufixo = _sufixoPeriodo(provider.periodo);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.receita.withOpacity(0.45), width: 1),
+        boxShadow: [
+          BoxShadow(color: AppColors.receita.withOpacity(0.28), blurRadius: 24),
+          BoxShadow(color: AppColors.receita.withOpacity(0.15), blurRadius: 6, spreadRadius: 1),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Receita',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            Formatters.moeda(provider.resumoPeriodo.receitaTotal),
+            style: TextStyle(color: AppColors.receita, fontSize: 26, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.35,
-      children: [
-        IndicadorCard(
-          titulo: 'Receita $sufixo',
-          valor: Formatters.moeda(resumo.receitaTotal),
-          icone: Icons.trending_up_rounded,
-          cor: AppColors.receita,
-          corFundo: AppColors.receitaSoft,
+/// Indicador "Total de km rodados" — estilo Vidro + marca d'água do
+/// catálogo (`.glass`): fundo translúcido com gradiente e um ícone gigante
+/// apagado no canto. Soma o km de todos os lançamentos de receita
+/// (corrida e deslocamento livre) dentro do período filtrado.
+class _IndicadorKmVidro extends StatelessWidget {
+  final DashboardProvider provider;
+  const _IndicadorKmVidro({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.textPrimary.withOpacity(0.08)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary.withOpacity(0.14), AppColors.surface],
         ),
-        IndicadorCard(
-          titulo: 'Despesa $sufixo',
-          valor: Formatters.moeda(resumo.despesaTotal),
-          icone: Icons.trending_down_rounded,
-          cor: AppColors.despesa,
-          corFundo: AppColors.despesaSoft,
-        ),
-        IndicadorCard(
-          titulo: 'Lucro $sufixo',
-          valor: Formatters.moeda(resumo.lucroLiquido),
-          icone: Icons.savings_rounded,
-          cor: AppColors.lucro,
-          corFundo: AppColors.lucroSoft,
-          subtitulo: Formatters.percentual(resumo.percentualLucro),
-        ),
-        IndicadorCard(
-          titulo: 'Km rodados',
-          valor: Formatters.km(resumo.kmRodados),
-          icone: Icons.route_rounded,
-          cor: AppColors.alerta,
-          corFundo: AppColors.surfaceElevated,
-        ),
-        IndicadorCard(
-          titulo: 'Ganho por Km',
-          valor: Formatters.moeda(resumo.receitaPorKm),
-          icone: Icons.speed_rounded,
-          cor: AppColors.receita,
-          corFundo: AppColors.receitaSoft,
-        ),
-        IndicadorCard(
-          titulo: 'Lucro por Km',
-          valor: Formatters.moeda(resumo.lucroPorKm),
-          icone: Icons.bolt_rounded,
-          cor: AppColors.lucro,
-          corFundo: AppColors.lucroSoft,
-        ),
-      ],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 30, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            top: -10,
+            child: Icon(
+              Icons.two_wheeler_rounded,
+              size: 90,
+              color: AppColors.textPrimary.withOpacity(0.08),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total de km rodados',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  Formatters.km(provider.resumoPeriodo.kmRodados),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -632,8 +648,13 @@ class _ValoresPorDia extends StatelessWidget {
   }
 }
 
-class _MetaDiaria extends StatelessWidget {
-  const _MetaDiaria();
+/// Indicador "Meta diária" — estilo Barra de fundo do catálogo (`.bgbar`):
+/// o preenchimento de progresso ocupa o card inteiro atrás do texto, ao
+/// invés de uma barrinha fina embaixo. Só aparece se uma meta diária foi
+/// configurada, e sempre usa a receita de HOJE — nunca muda com o filtro
+/// de período do painel, porque "diária" é diária, ponto final.
+class _MetaDiariaBarraFundo extends StatelessWidget {
+  const _MetaDiariaBarraFundo();
 
   @override
   Widget build(BuildContext context) {
@@ -642,64 +663,79 @@ class _MetaDiaria extends StatelessWidget {
         final meta = configProvider.configuracoes.metaDiaria;
         if (meta <= 0) return const SizedBox.shrink();
 
-        final receita = dashboardProvider.resumoPeriodo.receitaTotal;
+        final receita = dashboardProvider.receitaHoje;
         final progresso = (receita / meta).clamp(0.0, 1.0);
-        final falta = (meta - receita).clamp(0, double.infinity);
+        final percentual = (progresso * 100).round();
         final atingiu = receita >= meta;
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Meta diária',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Container(
+            width: double.infinity,
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: progresso == 0 ? 0.0001 : progresso,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              (atingiu ? AppColors.receita : AppColors.primary).withOpacity(0.28),
+                              (atingiu ? AppColors.receita : AppColors.primary).withOpacity(0.05),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    '${Formatters.moeda(receita)} / ${Formatters.moeda(meta)}',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Meta diária',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      RichText(
+                        text: TextSpan(
+                          text: Formatters.moeda(receita),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800),
+                          children: [
+                            TextSpan(
+                              text: ' / ${Formatters.moeda(meta)}',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        atingiu ? 'Meta batida! 🎉' : '$percentual% concluído',
+                        style: TextStyle(
+                          color: atingiu ? AppColors.receita : AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: progresso,
-                  minHeight: 8,
-                  backgroundColor: AppColors.surfaceElevated,
-                  color: atingiu ? AppColors.receita : AppColors.primary,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                atingiu
-                    ? 'Meta batida! 🎉'
-                    : 'Faltam ${Formatters.moeda(falta.toDouble())} para bater a meta',
-                style: TextStyle(
-                  color: atingiu ? AppColors.receita : AppColors.textSecondary,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

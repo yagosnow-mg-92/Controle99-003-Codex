@@ -47,6 +47,12 @@ class DashboardProvider extends ChangeNotifier {
   List<Receita> ultimasReceitas = [];
   List<Despesa> ultimasDespesas = [];
 
+  /// Receita de HOJE, sempre — independente do período selecionado no
+  /// filtro do painel. Usado só pelo indicador de meta diária, que por
+  /// definição é diário e não deve mudar se o usuário filtrar por semana,
+  /// mês ou um intervalo personalizado.
+  double receitaHoje = 0;
+
   /// Lucro/receita dia a dia dos últimos 7 dias, com a data de cada ponto
   /// (necessária para rotular o gráfico corretamente).
   List<({DateTime dia, double receita, double lucro})> ultimos7Dias = [];
@@ -81,6 +87,11 @@ class DashboardProvider extends ChangeNotifier {
 
     final todasReceitas = await _receitaRepository.listar();
     final todasDespesas = await _despesaRepository.listar();
+
+    final inicioHoje = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final fimHoje = inicioHoje.add(const Duration(days: 1));
+    final receitasHoje = await _receitaRepository.listar(inicio: inicioHoje, fim: fimHoje);
+    receitaHoje = receitasHoje.fold<double>(0, (s, r) => s + r.valorRecebido);
 
     // Este filtro existe apenas para facilitar a consulta visual das
     // corridas. `receitasPeriodo` e todos os indicadores acima continuam
