@@ -219,7 +219,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   _IndicadorKmVidro(provider: provider),
                   const SizedBox(height: 12),
-                  _IndicadorGanhoPorKmElevado(provider: provider),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: _IndicadorGanhoPorKmElevado(provider: provider)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _IndicadorCorridasElevado(provider: provider)),
+                    ],
+                  ),
                   const _MetaDiariaBarraFundo(),
                   const SizedBox(height: 24),
                   const _TituloSecao('Últimos 7 dias'),
@@ -403,6 +410,54 @@ class _IndicadorGanhoPorKmElevado extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             Formatters.moeda(provider.resumoPeriodo.receitaPorKm),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Indicador "Corridas" — mesmo estilo Elevado (3D), lado a lado com
+/// "Ganhos por Km" (por isso não usa `width: double.infinity`: o pai já é
+/// um `Expanded` dentro de uma `Row`, que define a largura). Conta só
+/// corridas de verdade — deslocamento livre não entra — dentro do mesmo
+/// período filtrado que os outros indicadores.
+class _IndicadorCorridasElevado extends StatelessWidget {
+  final DashboardProvider provider;
+  const _IndicadorCorridasElevado({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.surfaceElevated, AppColors.surface],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 40,
+            spreadRadius: -12,
+            offset: const Offset(0, 20),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Corridas',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${provider.quantidadeCorridas}',
             style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.w800),
           ),
         ],

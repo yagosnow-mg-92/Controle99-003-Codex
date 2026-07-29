@@ -53,6 +53,11 @@ class DashboardProvider extends ChangeNotifier {
   /// mês ou um intervalo personalizado.
   double receitaHoje = 0;
 
+  /// Quantas corridas de verdade (não conta deslocamento livre) aconteceram
+  /// dentro do período filtrado — mesmo filtro usado pela receita, pelo
+  /// km total e pelo ganho por km.
+  int quantidadeCorridas = 0;
+
   /// Lucro/receita dia a dia dos últimos 7 dias, com a data de cada ponto
   /// (necessária para rotular o gráfico corretamente).
   List<({DateTime dia, double receita, double lucro})> ultimos7Dias = [];
@@ -84,6 +89,7 @@ class DashboardProvider extends ChangeNotifier {
       inicio: intervalo.inicio,
       fim: intervalo.fim,
     );
+    quantidadeCorridas = receitasPeriodo.where((r) => r.tipo == TipoReceita.corrida).length;
 
     final todasReceitas = await _receitaRepository.listar();
     final todasDespesas = await _despesaRepository.listar();
