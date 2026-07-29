@@ -38,6 +38,15 @@ class CorridaProvider extends ChangeNotifier {
   StatusSessao get status => sessaoAtual?.status ?? StatusSessao.offline;
 
   Duration tempoDecorrido = Duration.zero;
+
+  /// Tempo do "trecho" atual — zera toda vez que o trecho muda: ficar
+  /// online, tocar em "mudei de local", iniciar uma corrida, ou finalizar/
+  /// cancelar uma corrida (volta a contar o tempo esperando a próxima).
+  /// `tempoDecorrido` continua contando o tempo total desde que ficou
+  /// online, sem nunca zerar — os dois convivem lado a lado.
+  Duration tempoSegmentoAtual = Duration.zero;
+  DateTime? _inicioSegmentoAtual;
+
   String? enderecoAtual;
 
   Timer? _timer;
@@ -58,6 +67,7 @@ class CorridaProvider extends ChangeNotifier {
         corridaAtual = await _repository.corridaAberta(sessaoAberta.id);
       }
       await _retomarRastreamento();
+      _reiniciarSegmento();
     }
 
     carregando = false;
@@ -87,9 +97,20 @@ class CorridaProvider extends ChangeNotifier {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (sessaoAtual != null) {
         tempoDecorrido = sessaoAtual!.duracao;
+        final inicioSegmento = _inicioSegmentoAtual;
+        if (inicioSegmento != null) {
+          tempoSegmentoAtual = DateTime.now().difference(inicioSegmento);
+        }
         notifyListeners();
       }
     });
+  }
+
+  /// Zera o cronômetro do trecho atual — chamado toda vez que um trecho
+  /// termina e outro começa (ver comentário em [tempoSegmentoAtual]).
+  void _reiniciarSegmento() {
+    _inicioSegmentoAtual = DateTime.now();
+    tempoSegmentoAtual = Duration.zero;
   }
 
   /// Grava, de forma pontual, a localização exata de um clique importante
@@ -183,6 +204,7 @@ class CorridaProvider extends ChangeNotifier {
     await _registrarPosicaoAtualObrigatoria();
     await _registrarEvento(sessao.id, TipoEvento.ficouOnline);
     await _retomarRastreamento();
+    _reiniciarSegmento();
 
     processando = false;
     notifyListeners();
@@ -249,6 +271,7 @@ class CorridaProvider extends ChangeNotifier {
     sessaoAtual = sessaoAtual!.copyWith(status: StatusSessao.corridaIniciada);
 
     await ForegroundTaskService.atualizarNotificacao('Corrida em andamento.');
+    _reiniciarSegmento();
 
     processando = false;
     notifyListeners();
@@ -311,6 +334,7 @@ class CorridaProvider extends ChangeNotifier {
     await ForegroundTaskService.atualizarSessao(sessaoId: sessaoAtual!.id, corridaId: null);
 
     await ForegroundTaskService.atualizarNotificacao('Você está online — procurando corrida.');
+    _reiniciarSegmento();
 
     processando = false;
     notifyListeners();
@@ -412,6 +436,28 @@ class CorridaProvider extends ChangeNotifier {
     await ForegroundTaskService.atualizarSessao(sessaoId: sessaoAtual!.id, corridaId: null);
 
     await ForegroundTaskService.atualizarNotificacao('Você está online — procurando corrida.');
+    _reiniciarSegmento();
+
+    processando = false;
+    notifyListeners();
+  }
+
+  /// "Mudei de local" — só faz sentido no estado online, sem corrida em
+  /// andamento (mesmos botões que "Iniciar corrida" e "Ficar offline").
+  /// Fecha o trecho atual exatamente como se tivesse ficado offline e
+  /// online de novo: lança o que foi percorrido até agora como um
+  /// deslocamento livre (valor zero) e reinicia o cronômetro do trecho —
+  /// sem, no entanto, encerrar a sessão. Serve pra separar, no relatório,
+  /// quanto tempo foi gasto esperando corrida em cada ponto diferente.
+  Future<void> mudarDeLocal() async {
+    if (sessaoAtual == null || corridaAtual != null) return;
+    processando = true;
+    notifyListeners();
+
+    await _registrarPosicaoAtualObrigatoria();
+    await _lancarDeslocamentoLivreSeNecessario();
+    await _registrarEvento(sessaoAtual!.id, TipoEvento.mudouLocal);
+    _reiniciarSegmento();
 
     processando = false;
     notifyListeners();

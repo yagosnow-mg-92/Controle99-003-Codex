@@ -16,4 +16,5 @@ enum TipoEvento {
   pegouPassageiro,
   finalizouCorrida,
   ficouOffline,
+  mudouLocal,
 }

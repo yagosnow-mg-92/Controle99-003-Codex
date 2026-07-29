@@ -132,6 +132,10 @@ class _CorridaScreenState extends State<CorridaScreen> {
             );
             if (valor != null) await provider.iniciarCorrida(valor);
           },
+          onMudarDeLocal: () async {
+            await provider.mudarDeLocal();
+            await _atualizarReceitaEDashboard();
+          },
           onFicarOffline: () async {
             await provider.ficarOffline();
             await _atualizarReceitaEDashboard();
@@ -264,6 +268,8 @@ class _CabecalhoStatus extends StatelessWidget {
   final Duration tempo;
   final String Function(Duration) formatarDuracao;
   final String? endereco;
+  final Duration? tempoSegmento;
+  final String? rotuloSegmento;
 
   const _CabecalhoStatus({
     required this.titulo,
@@ -271,6 +277,8 @@ class _CabecalhoStatus extends StatelessWidget {
     required this.tempo,
     required this.formatarDuracao,
     this.endereco,
+    this.tempoSegmento,
+    this.rotuloSegmento,
   });
 
   @override
@@ -293,6 +301,13 @@ class _CabecalhoStatus extends StatelessWidget {
             fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
+        if (tempoSegmento != null && rotuloSegmento != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '$rotuloSegmento: ${formatarDuracao(tempoSegmento!)}',
+            style: TextStyle(color: cor, fontSize: 13.5, fontWeight: FontWeight.w600),
+          ),
+        ],
         const SizedBox(height: 8),
         if (endereco != null && endereco!.isNotEmpty)
           Padding(
@@ -322,12 +337,14 @@ class _TelaOnline extends StatelessWidget {
   final CorridaProvider provider;
   final String Function(Duration) formatarDuracao;
   final VoidCallback onIniciarCorrida;
+  final VoidCallback onMudarDeLocal;
   final VoidCallback onFicarOffline;
 
   const _TelaOnline({
     required this.provider,
     required this.formatarDuracao,
     required this.onIniciarCorrida,
+    required this.onMudarDeLocal,
     required this.onFicarOffline,
   });
 
@@ -342,6 +359,8 @@ class _TelaOnline extends StatelessWidget {
           tempo: provider.tempoDecorrido,
           formatarDuracao: formatarDuracao,
           endereco: provider.enderecoAtual,
+          tempoSegmento: provider.tempoSegmentoAtual,
+          rotuloSegmento: 'Nesse local',
         ),
         const SizedBox(height: 40),
         SizedBox(
@@ -350,6 +369,19 @@ class _TelaOnline extends StatelessWidget {
             onPressed: provider.processando ? null : onIniciarCorrida,
             style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18)),
             child: const Text('Iniciar corrida', style: TextStyle(fontSize: 16)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: provider.processando ? null : onMudarDeLocal,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+            ),
+            icon: Icon(Icons.edit_location_alt_rounded, color: AppColors.primary, size: 20),
+            label: Text('Mudei de local', style: TextStyle(color: AppColors.primary)),
           ),
         ),
         const SizedBox(height: 12),
@@ -393,6 +425,8 @@ class _TelaCorridaIniciada extends StatelessWidget {
           tempo: provider.tempoDecorrido,
           formatarDuracao: formatarDuracao,
           endereco: provider.enderecoAtual,
+          tempoSegmento: provider.tempoSegmentoAtual,
+          rotuloSegmento: 'Duração da corrida',
         ),
         const SizedBox(height: 8),
         Text(
@@ -450,6 +484,8 @@ class _TelaComPassageiro extends StatelessWidget {
           tempo: provider.tempoDecorrido,
           formatarDuracao: formatarDuracao,
           endereco: provider.enderecoAtual,
+          tempoSegmento: provider.tempoSegmentoAtual,
+          rotuloSegmento: 'Duração da corrida',
         ),
         const SizedBox(height: 8),
         Text(
