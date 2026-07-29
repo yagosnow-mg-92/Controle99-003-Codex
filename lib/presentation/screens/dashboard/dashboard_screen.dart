@@ -219,13 +219,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   _IndicadorKmVidro(provider: provider),
                   const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: _IndicadorGanhoPorKmElevado(provider: provider)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _IndicadorCorridasElevado(provider: provider)),
-                    ],
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: _IndicadorGanhoPorKmElevado(provider: provider)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _IndicadorCorridasElevado(provider: provider)),
+                      ],
+                    ),
                   ),
                   const _MetaDiariaBarraFundo(),
                   const SizedBox(height: 24),
