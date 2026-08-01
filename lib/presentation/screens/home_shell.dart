@@ -21,23 +21,41 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  late final _telas = [
-    DashboardScreen(onVerLancamentos: _irParaReceita),
-    const CorridaScreen(),
-    const ReceitaScreen(),
-    const DespesasScreen(),
-    const MaisScreen(),
-  ];
+  /// Toda vez que um card de corrida é aberto via toque duplo no painel,
+  /// esse contador incrementa — usado como parte da `Key` da ReceitaScreen
+  /// pra forçar ela a reconstruir do zero e mostrar o novo lançamento,
+  /// mesmo que a última coisa aberta tenha sido esse mesmo id de novo.
+  int _tiqueAbrirReceita = 0;
+  String? _receitaIdParaAbrir;
 
-  Future<void> _irParaReceita() async {
-    setState(() => _index = 2);
+  Future<void> _irParaReceita({String? receitaId}) async {
+    setState(() {
+      _index = 2;
+      _receitaIdParaAbrir = receitaId;
+      _tiqueAbrirReceita++;
+    });
     await context.read<ReceitaProvider>().carregar();
+  }
+
+  Future<void> _irParaDespesas() async {
+    setState(() => _index = 3);
   }
 
   @override
   Widget build(BuildContext context) {
+    final telas = [
+      DashboardScreen(onVerReceita: (id) => _irParaReceita(receitaId: id), onVerDespesas: _irParaDespesas),
+      const CorridaScreen(),
+      ReceitaScreen(
+        key: ValueKey('receita_tela_$_tiqueAbrirReceita'),
+        abrirReceitaId: _receitaIdParaAbrir,
+      ),
+      const DespesasScreen(),
+      const MaisScreen(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: _telas),
+      body: IndexedStack(index: _index, children: telas),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) async {

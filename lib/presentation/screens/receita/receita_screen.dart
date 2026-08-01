@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
@@ -14,7 +15,11 @@ import '../../providers/receita_provider.dart';
 import 'mapa_trajeto_screen.dart';
 
 class ReceitaScreen extends StatefulWidget {
-  const ReceitaScreen({super.key});
+  /// Quando informado, a tela já abre com esse lançamento em modo
+  /// visualização — usado pelo toque duplo num card de corrida no
+  /// carrossel do painel, pra pular direto pra "consultar a corrida".
+  final String? abrirReceitaId;
+  const ReceitaScreen({super.key, this.abrirReceitaId});
 
   @override
   State<ReceitaScreen> createState() => _ReceitaScreenState();
@@ -51,8 +56,15 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ReceitaProvider>().carregar();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<ReceitaProvider>();
+      await provider.carregar();
+      if (!mounted) return;
+      final idParaAbrir = widget.abrirReceitaId;
+      if (idParaAbrir != null) {
+        final receita = provider.lancamentos.where((r) => r.id == idParaAbrir).firstOrNull;
+        if (receita != null) _visualizarLancamento(receita);
+      }
     });
     _kmController.addListener(_atualizarPreview);
     _valorController.addListener(_atualizarPreview);

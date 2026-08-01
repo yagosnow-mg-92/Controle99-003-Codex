@@ -29,8 +29,9 @@ String _tituloPeriodo(PeriodoFiltro periodo) {
 
 
 class DashboardScreen extends StatefulWidget {
-  final VoidCallback? onVerLancamentos;
-  const DashboardScreen({super.key, this.onVerLancamentos});
+  final void Function(String receitaId)? onVerReceita;
+  final VoidCallback? onVerDespesas;
+  const DashboardScreen({super.key, this.onVerReceita, this.onVerDespesas});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -237,7 +238,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 24),
                   const _TituloSecao('Últimos lançamentos'),
                   const SizedBox(height: 12),
-                  _ListaUltimosLancamentos(provider: provider, onVerTodos: widget.onVerLancamentos),
+                  _ListaUltimosLancamentos(
+                    provider: provider,
+                    onVerReceita: widget.onVerReceita,
+                    onVerDespesas: widget.onVerDespesas,
+                  ),
                 ],
               ),
             );
@@ -921,14 +926,15 @@ class _EstadoVazioGrafico extends StatelessWidget {
 /// calma.
 class _ListaUltimosLancamentos extends StatefulWidget {
   final DashboardProvider provider;
-  final VoidCallback? onVerTodos;
-  const _ListaUltimosLancamentos({required this.provider, this.onVerTodos});
+  final void Function(String receitaId)? onVerReceita;
+  final VoidCallback? onVerDespesas;
+  const _ListaUltimosLancamentos({required this.provider, this.onVerReceita, this.onVerDespesas});
 
   @override
   State<_ListaUltimosLancamentos> createState() => _ListaUltimosLancamentosState();
 }
 
-typedef _ItemLancamento = ({DateTime data, String titulo, double valor, bool positivo});
+typedef _ItemLancamento = ({String id, DateTime data, String titulo, double valor, bool positivo});
 
 class _ListaUltimosLancamentosState extends State<_ListaUltimosLancamentos>
     with SingleTickerProviderStateMixin {
@@ -986,12 +992,14 @@ class _ListaUltimosLancamentosState extends State<_ListaUltimosLancamentos>
   Widget build(BuildContext context) {
     final itens = <_ItemLancamento>[
       ...widget.provider.ultimasReceitas.map((r) => (
+            id: r.id,
             data: r.data,
             titulo: r.tipo.descricao,
             valor: r.valorRecebido,
             positivo: true,
           )),
       ...widget.provider.ultimasDespesas.map((d) => (
+            id: d.id,
             data: d.data,
             titulo: d.categoria,
             valor: d.valor,
@@ -1017,7 +1025,14 @@ class _ListaUltimosLancamentosState extends State<_ListaUltimosLancamentos>
     if (_paginaAtual >= visiveis.length) _paginaAtual = 0;
 
     return GestureDetector(
-      onDoubleTap: widget.onVerTodos,
+      onDoubleTap: () {
+        final item = visiveis[_paginaAtual.clamp(0, visiveis.length - 1)];
+        if (item.positivo) {
+          widget.onVerReceita?.call(item.id);
+        } else {
+          widget.onVerDespesas?.call();
+        }
+      },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -1076,7 +1091,7 @@ class _ListaUltimosLancamentosState extends State<_ListaUltimosLancamentos>
             const SizedBox(height: 10),
             Center(
               child: Text(
-                'toque duas vezes para ver todos os lançamentos',
+                'toque duas vezes para consultar esse lançamento',
                 style: TextStyle(color: AppColors.textDisabled, fontSize: 10.5),
               ),
             ),
