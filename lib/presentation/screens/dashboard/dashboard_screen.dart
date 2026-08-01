@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -527,216 +526,162 @@ class _IndicadorKmVidro extends StatelessWidget {
   }
 }
 
-class _GraficoDesempenho extends StatelessWidget {
+/// Gráfico da receita dos últimos 7 dias — desenhado do zero (sem
+/// biblioteca de gráficos) pra ter controle total sobre a animação de
+/// entrada e deixar valor + dia sempre legíveis, sem precisar tocar.
+///
+/// Cada barra sobe do zero com um leve atraso em cascata (efeito onda),
+/// o dia de hoje ganha destaque próprio (contorno e brilho), e tocar numa
+/// barra dá um pequeno "salto" nela — pra dar uma sensação viva ao gráfico
+/// mesmo sem esconder nenhuma informação atrás do toque.
+class _GraficoDesempenho extends StatefulWidget {
   final DashboardProvider provider;
   const _GraficoDesempenho({required this.provider});
 
   @override
-  Widget build(BuildContext context) {
-    final dias = provider.ultimos7Dias;
+  State<_GraficoDesempenho> createState() => _GraficoDesempenhoState();
+}
 
+class _GraficoDesempenhoState extends State<_GraficoDesempenho> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  int? _indiceTocado;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _controller.forward());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  static const _diasSemana = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+
+  @override
+  Widget build(BuildContext context) {
+    final dias = widget.provider.ultimos7Dias;
     if (dias.isEmpty || dias.every((d) => d.receita == 0)) {
       return const _EstadoVazioGrafico();
     }
 
     final maiorValor = dias.map((d) => d.receita).fold<double>(0, (a, b) => a > b ? a : b);
-
-    final maxY = maiorValor == 0 ? 10.0 : maiorValor * 1.25;
-    const minY = 0.0;
-    final intervaloEixoY = ((maxY - minY) / 4).clamp(1, double.infinity);
+    final hoje = DateTime.now();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _LegendaGrafico(),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 220,
-            child: LineChart(
-              LineChartData(
-                minY: minY,
-                maxY: maxY,
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: intervaloEixoY.toDouble(),
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: AppColors.border,
-                    strokeWidth: 1,
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (_) => AppColors.surfaceElevated,
-                    getTooltipItems: (spots) => spots.map((spot) {
-                      final cor = spot.bar.color ?? AppColors.textPrimary;
-                      return LineTooltipItem(
-                        Formatters.moeda(spot.y),
-                        TextStyle(color: cor, fontWeight: FontWeight.w700, fontSize: 12),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 44,
-                      interval: intervaloEixoY.toDouble(),
-                      getTitlesWidget: (value, meta) => Text(
-                        _valorCompacto(value),
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
-                      ),
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        final indice = value.toInt();
-                        if (indice < 0 || indice >= dias.length) return const SizedBox();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
+      child: SizedBox(
+        height: 200,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(dias.length, (i) {
+            final dia = dias[i];
+            final ehHoje = dia.dia.year == hoje.year && dia.dia.month == hoje.month && dia.dia.day == hoje.day;
+            final fracao = maiorValor == 0 ? 0.0 : dia.receita / maiorValor;
+
+            // Cascata: cada barra começa sua animação um pouco depois da
+            // anterior, criando a sensação de "onda subindo" ao abrir a tela.
+            final inicioAtraso = (i / dias.length) * 0.5;
+            final curvaBarra = CurvedAnimation(
+              parent: _controller,
+              curve: Interval(inicioAtraso, (inicioAtraso + 0.5).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
+            );
+
+            return Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => setState(() => _indiceTocado = i),
+                onTapUp: (_) => setState(() => _indiceTocado = null),
+                onTapCancel: () => setState(() => _indiceTocado = null),
+                child: AnimatedBuilder(
+                  animation: curvaBarra,
+                  builder: (context, child) {
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Opacity(
+                          opacity: curvaBarra.value,
                           child: Text(
-                            _diaAbreviado(dias[indice].dia),
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                            dia.receita == 0 ? '—' : _valorCompacto(dia.receita),
+                            style: TextStyle(
+                              color: ehHoje ? AppColors.receita : AppColors.textSecondary,
+                              fontSize: 10.5,
+                              fontWeight: ehHoje ? FontWeight.w800 : FontWeight.w600,
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        ),
+                        const SizedBox(height: 6),
+                        AnimatedScale(
+                          duration: const Duration(milliseconds: 120),
+                          scale: _indiceTocado == i ? 1.08 : 1.0,
+                          child: Container(
+                            height: 130 * fracao * curvaBarra.value,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            constraints: const BoxConstraints(minHeight: 4),
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: ehHoje
+                                    ? [AppColors.receita, AppColors.receita.withOpacity(0.55)]
+                                    : [AppColors.receita.withOpacity(0.55), AppColors.receita.withOpacity(0.18)],
+                              ),
+                              boxShadow: ehHoje
+                                  ? [BoxShadow(color: AppColors.receita.withOpacity(0.45), blurRadius: 12, offset: const Offset(0, 4))]
+                                  : null,
+                              border: ehHoje ? Border.all(color: AppColors.receita, width: 1.5) : null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Opacity(
+                          opacity: curvaBarra.value,
+                          child: Column(
+                            children: [
+                              Text(
+                                '${dia.dia.day}',
+                                style: TextStyle(
+                                  color: ehHoje ? AppColors.textPrimary : AppColors.textSecondary,
+                                  fontSize: 12.5,
+                                  fontWeight: ehHoje ? FontWeight.w800 : FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                ehHoje ? 'hoje' : _diasSemana[dia.dia.weekday - 1],
+                                style: TextStyle(
+                                  color: ehHoje ? AppColors.receita : AppColors.textDisabled,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                lineBarsData: [
-                  _linha(dias.map((d) => d.receita).toList(), AppColors.receita),
-                ],
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _ValoresPorDia(dias: dias),
-        ],
+            );
+          }),
+        ),
       ),
     );
-  }
-
-  String _diaAbreviado(DateTime data) {
-    return '${data.day.toString().padLeft(2, '0')}/${data.month.toString().padLeft(2, '0')}';
   }
 
   String _valorCompacto(double valor) {
-    if (valor.abs() >= 1000) {
-      return '${(valor / 1000).toStringAsFixed(1)}k';
-    }
-    return valor.toStringAsFixed(0);
-  }
-
-  LineChartBarData _linha(List<double> valores, Color cor) {
-    return LineChartBarData(
-      spots: [
-        for (int i = 0; i < valores.length; i++) FlSpot(i.toDouble(), valores[i]),
-      ],
-      isCurved: false,
-      color: cor,
-      barWidth: 2.5,
-      dotData: FlDotData(
-        show: true,
-        getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-          radius: 3.5,
-          color: cor,
-          strokeWidth: 2,
-          strokeColor: AppColors.surface,
-        ),
-      ),
-      belowBarData: BarAreaData(show: true, color: cor.withOpacity(0.06)),
-    );
-  }
-}
-
-class _LegendaGrafico extends StatelessWidget {
-  const _LegendaGrafico();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ItemLegenda(cor: AppColors.receita, texto: 'Receita');
-  }
-}
-
-class _ItemLegenda extends StatelessWidget {
-  final Color cor;
-  final String texto;
-  const _ItemLegenda({required this.cor, required this.texto});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(texto, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-      ],
-    );
-  }
-}
-
-/// Lista os valores de cada um dos 7 dias por extenso, para que o usuário
-/// veja os números exatos sem precisar tocar no gráfico.
-class _ValoresPorDia extends StatelessWidget {
-  final List<({DateTime dia, double receita, double lucro})> dias;
-  const _ValoresPorDia({required this.dias});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: dias.map((d) {
-          return Container(
-            width: 92,
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${d.dia.day.toString().padLeft(2, '0')}/${d.dia.month.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    color: AppColors.textDisabled,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  Formatters.moeda(d.receita),
-                  style: TextStyle(color: AppColors.receita, fontSize: 11.5),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
+    if (valor.abs() >= 1000) return 'R\$${(valor / 1000).toStringAsFixed(1)}k';
+    return Formatters.moeda(valor);
   }
 }
 
