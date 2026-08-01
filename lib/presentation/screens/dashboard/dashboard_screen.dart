@@ -229,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-                  const _MetaDiariaBarraFundo(),
+                  const _CarrosselMetas(),
                   const SizedBox(height: 24),
                   const _TituloSecao('Últimos 7 dias'),
                   const SizedBox(height: 12),
@@ -745,89 +745,197 @@ class _ValoresPorDia extends StatelessWidget {
 /// invés de uma barrinha fina embaixo. Só aparece se uma meta diária foi
 /// configurada, e sempre usa a receita de HOJE — nunca muda com o filtro
 /// de período do painel, porque "diária" é diária, ponto final.
-class _MetaDiariaBarraFundo extends StatelessWidget {
-  const _MetaDiariaBarraFundo();
+/// Um "cartão de meta": diária, semanal ou mensal — todos com o mesmo
+/// visual de barra de fundo (`.bgbar` do catálogo) já usado no indicador
+/// original. Extraído como widget próprio pra ser reaproveitado pelas três
+/// páginas do carrossel abaixo.
+class _CartaoMeta extends StatelessWidget {
+  final String rotulo;
+  final double valor;
+  final double meta;
+
+  const _CartaoMeta({required this.rotulo, required this.valor, required this.meta});
+
+  @override
+  Widget build(BuildContext context) {
+    final progresso = (valor / meta).clamp(0.0, 1.0);
+    final percentual = (progresso * 100).round();
+    final atingiu = valor >= meta;
+    final cor = atingiu ? AppColors.receita : AppColors.primary;
+
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: progresso == 0 ? 0.0001 : progresso,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [cor.withOpacity(0.28), cor.withOpacity(0.05)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  rotulo,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 4),
+                RichText(
+                  text: TextSpan(
+                    text: Formatters.moeda(valor),
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800),
+                    children: [
+                      TextSpan(
+                        text: ' / ${Formatters.moeda(meta)}',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  atingiu ? 'Meta batida! 🎉' : '$percentual% concluído',
+                  style: TextStyle(color: cor, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Carrossel de metas — diária, semanal e mensal, cada uma no mesmo visual
+/// de barra de fundo, arrastável horizontalmente. Só entram no carrossel as
+/// metas que o motociclista configurou (valor > 0); se nenhuma estiver
+/// configurada, o carrossel inteiro fica oculto — igual o comportamento
+/// original, só que agora por meta individual.
+class _CarrosselMetas extends StatefulWidget {
+  const _CarrosselMetas();
+
+  @override
+  State<_CarrosselMetas> createState() => _CarrosselMetasState();
+}
+
+class _CarrosselMetasState extends State<_CarrosselMetas> {
+  final _controller = PageController(viewportFraction: 1);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer2<ConfiguracoesProvider, DashboardProvider>(
       builder: (context, configProvider, dashboardProvider, _) {
-        final meta = configProvider.configuracoes.metaDiaria;
-        if (meta <= 0) return const SizedBox.shrink();
-
-        final receita = dashboardProvider.receitaHoje;
-        final progresso = (receita / meta).clamp(0.0, 1.0);
-        final percentual = (progresso * 100).round();
-        final atingiu = receita >= meta;
+        final config = configProvider.configuracoes;
+        final metas = <({String rotulo, double valor, double meta})>[
+          if (config.metaDiaria > 0)
+            (rotulo: 'Meta diária', valor: dashboardProvider.receitaHoje, meta: config.metaDiaria),
+          if (config.metaSemanal > 0)
+            (rotulo: 'Meta semanal', valor: dashboardProvider.receitaSemana, meta: config.metaSemanal),
+          if (config.metaMensal > 0)
+            (rotulo: 'Meta mensal', valor: dashboardProvider.receitaMes, meta: config.metaMensal),
+        ];
+        if (metas.isEmpty) return const SizedBox.shrink();
 
         return Padding(
           padding: const EdgeInsets.only(top: 12),
-          child: Container(
-            width: double.infinity,
-            clipBehavior: Clip.hardEdge,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: progresso == 0 ? 0.0001 : progresso,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              (atingiu ? AppColors.receita : AppColors.primary).withOpacity(0.28),
-                              (atingiu ? AppColors.receita : AppColors.primary).withOpacity(0.05),
-                            ],
+          child: Column(
+            children: [
+              SizedBox(
+                height: 100,
+                child: metas.length == 1
+                    ? _CartaoMeta(rotulo: metas.first.rotulo, valor: metas.first.valor, meta: metas.first.meta)
+                    : AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, _) {
+                          return PageView.builder(
+                            controller: _controller,
+                            itemCount: metas.length,
+                            itemBuilder: (context, index) {
+                              // Efeito carrossel: a página central fica em
+                              // tamanho e opacidade máximos, e as vizinhas
+                              // encolhem/apagam levemente conforme se afastam
+                              // — o mesmo tipo de transição suave usado em
+                              // carrosséis de apps como o de saúde da Apple.
+                              double diferenca = index.toDouble();
+                              if (_controller.hasClients && _controller.position.haveDimensions) {
+                                diferenca = (index - (_controller.page ?? _controller.initialPage.toDouble()));
+                              }
+                              final proximidade = (1 - diferenca.abs().clamp(0.0, 1.0));
+                              final escala = 0.94 + (0.06 * proximidade);
+                              final opacidade = 0.6 + (0.4 * proximidade);
+
+                              final meta = metas[index];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 3),
+                                child: Opacity(
+                                  opacity: opacidade,
+                                  child: Transform.scale(
+                                    scale: escala,
+                                    child: _CartaoMeta(rotulo: meta.rotulo, valor: meta.valor, meta: meta.meta),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+              if (metas.length > 1) ...[
+                const SizedBox(height: 10),
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    final paginaAtual = _controller.hasClients && _controller.position.haveDimensions
+                        ? (_controller.page ?? 0.0)
+                        : 0.0;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(metas.length, (index) {
+                        final distancia = (paginaAtual - index).abs().clamp(0.0, 1.0);
+                        final ativo = 1 - distancia;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: 6 + (10 * ativo),
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            color: Color.lerp(AppColors.border, AppColors.primary, ativo),
                           ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Meta diária',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 4),
-                      RichText(
-                        text: TextSpan(
-                          text: Formatters.moeda(receita),
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800),
-                          children: [
-                            TextSpan(
-                              text: ' / ${Formatters.moeda(meta)}',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        atingiu ? 'Meta batida! 🎉' : '$percentual% concluído',
-                        style: TextStyle(
-                          color: atingiu ? AppColors.receita : AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                        );
+                      }),
+                    );
+                  },
                 ),
               ],
-            ),
+            ],
           ),
         );
       },

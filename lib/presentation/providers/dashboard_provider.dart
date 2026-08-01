@@ -53,6 +53,12 @@ class DashboardProvider extends ChangeNotifier {
   /// mês ou um intervalo personalizado.
   double receitaHoje = 0;
 
+  /// Mesma ideia de [receitaHoje], mas para a semana e o mês atuais —
+  /// alimentam o carrossel de metas (diária/semanal/mensal), que também
+  /// não deve mudar com o filtro do painel.
+  double receitaSemana = 0;
+  double receitaMes = 0;
+
   /// Quantas corridas de verdade (não conta deslocamento livre) aconteceram
   /// dentro do período filtrado — mesmo filtro usado pela receita, pelo
   /// km total e pelo ganho por km.
@@ -98,6 +104,20 @@ class DashboardProvider extends ChangeNotifier {
     final fimHoje = inicioHoje.add(const Duration(days: 1));
     final receitasHoje = await _receitaRepository.listar(inicio: inicioHoje, fim: fimHoje);
     receitaHoje = receitasHoje.fold<double>(0, (s, r) => s + r.valorRecebido);
+
+    final intervaloSemana = calcularIntervaloPeriodo(PeriodoFiltro.semana);
+    final receitasSemana = await _receitaRepository.listar(
+      inicio: intervaloSemana.inicio,
+      fim: intervaloSemana.fim,
+    );
+    receitaSemana = receitasSemana.fold<double>(0, (s, r) => s + r.valorRecebido);
+
+    final intervaloMes = calcularIntervaloPeriodo(PeriodoFiltro.mes);
+    final receitasMes = await _receitaRepository.listar(
+      inicio: intervaloMes.inicio,
+      fim: intervaloMes.fim,
+    );
+    receitaMes = receitasMes.fold<double>(0, (s, r) => s + r.valorRecebido);
 
     // Este filtro existe apenas para facilitar a consulta visual das
     // corridas. `receitasPeriodo` e todos os indicadores acima continuam
