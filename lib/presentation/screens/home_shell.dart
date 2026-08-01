@@ -21,13 +21,18 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  final _telas = const [
-    DashboardScreen(),
-    CorridaScreen(),
-    ReceitaScreen(),
-    DespesasScreen(),
-    MaisScreen(),
+  late final _telas = [
+    DashboardScreen(onVerLancamentos: _irParaReceita),
+    const CorridaScreen(),
+    const ReceitaScreen(),
+    const DespesasScreen(),
+    const MaisScreen(),
   ];
+
+  Future<void> _irParaReceita() async {
+    setState(() => _index = 2);
+    await context.read<ReceitaProvider>().carregar();
+  }
 
   @override
   Widget build(BuildContext context) {

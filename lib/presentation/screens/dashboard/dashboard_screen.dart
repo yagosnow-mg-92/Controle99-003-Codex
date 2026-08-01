@@ -29,7 +29,8 @@ String _tituloPeriodo(PeriodoFiltro periodo) {
 
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback? onVerLancamentos;
+  const DashboardScreen({super.key, this.onVerLancamentos});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -236,7 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 24),
                   const _TituloSecao('Últimos lançamentos'),
                   const SizedBox(height: 12),
-                  _ListaUltimosLancamentos(provider: provider),
+                  _ListaUltimosLancamentos(provider: provider, onVerTodos: widget.onVerLancamentos),
                 ],
               ),
             );
@@ -912,28 +913,94 @@ class _EstadoVazioGrafico extends StatelessWidget {
   }
 }
 
-class _ListaUltimosLancamentos extends StatelessWidget {
+/// Últimos lançamentos — carrossel compacto estilo "stories": um card por
+/// vez, altura fixa (não cresce conforme tem mais lançamento), avança
+/// sozinho com uma barrinha de progresso segmentada acima (uma barra por
+/// item), mas também pode ser arrastado na mão a qualquer momento.
+/// Dois toques rápidos levam direto pra tela de Receita, pra analisar com
+/// calma.
+class _ListaUltimosLancamentos extends StatefulWidget {
   final DashboardProvider provider;
-  const _ListaUltimosLancamentos({required this.provider});
+  final VoidCallback? onVerTodos;
+  const _ListaUltimosLancamentos({required this.provider, this.onVerTodos});
+
+  @override
+  State<_ListaUltimosLancamentos> createState() => _ListaUltimosLancamentosState();
+}
+
+typedef _ItemLancamento = ({DateTime data, String titulo, double valor, bool positivo});
+
+class _ListaUltimosLancamentosState extends State<_ListaUltimosLancamentos>
+    with SingleTickerProviderStateMixin {
+  static const _intervaloAutoAvanco = Duration(milliseconds: 4200);
+
+  final _pageController = PageController();
+  late final AnimationController _progresso;
+  int _paginaAtual = 0;
+  int _totalItens = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _progresso = AnimationController(vsync: this, duration: _intervaloAutoAvanco)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) _avancar();
+      });
+  }
+
+  @override
+  void dispose() {
+    _progresso.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _configurarAutoAvanco(int totalItens) {
+    if (totalItens == _totalItens) return;
+    _totalItens = totalItens;
+    if (totalItens > 1) {
+      _progresso
+        ..reset()
+        ..forward();
+    }
+  }
+
+  void _avancar() {
+    if (!_pageController.hasClients || _totalItens <= 1) return;
+    final proxima = (_paginaAtual + 1) % _totalItens;
+    _pageController.animateToPage(
+      proxima,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _aoTrocarPagina(int pagina) {
+    setState(() => _paginaAtual = pagina);
+    _progresso
+      ..reset()
+      ..forward();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final itens = [
-      ...provider.ultimasReceitas.map((r) => (
+    final itens = <_ItemLancamento>[
+      ...widget.provider.ultimasReceitas.map((r) => (
             data: r.data,
             titulo: r.tipo.descricao,
             valor: r.valorRecebido,
             positivo: true,
           )),
-      ...provider.ultimasDespesas.map((d) => (
+      ...widget.provider.ultimasDespesas.map((d) => (
             data: d.data,
             titulo: d.categoria,
             valor: d.valor,
             positivo: false,
           )),
     ]..sort((a, b) => b.data.compareTo(a.data));
+    final visiveis = itens.take(8).toList();
 
-    if (itens.isEmpty) {
+    if (visiveis.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
         alignment: Alignment.center,
@@ -942,46 +1009,135 @@ class _ListaUltimosLancamentos extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.border),
         ),
-        child: Text(
-          'Nenhum lançamento ainda',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
+        child: Text('Nenhum lançamento ainda', style: TextStyle(color: AppColors.textSecondary)),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: itens.take(6).map((item) {
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor:
-                  item.positivo ? AppColors.receitaSoft : AppColors.despesaSoft,
-              child: Icon(
-                item.positivo ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                color: item.positivo ? AppColors.receita : AppColors.despesa,
-                size: 18,
+    WidgetsBinding.instance.addPostFrameCallback((_) => _configurarAutoAvanco(visiveis.length));
+    if (_paginaAtual >= visiveis.length) _paginaAtual = 0;
+
+    return GestureDetector(
+      onDoubleTap: widget.onVerTodos,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (visiveis.length > 1)
+              Row(
+                children: List.generate(visiveis.length, (i) {
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: i == visiveis.length - 1 ? 0 : 4),
+                      child: AnimatedBuilder(
+                        animation: _progresso,
+                        builder: (context, _) {
+                          double valorPreenchido;
+                          if (i < _paginaAtual) {
+                            valorPreenchido = 1;
+                          } else if (i == _paginaAtual) {
+                            valorPreenchido = _progresso.value;
+                          } else {
+                            valorPreenchido = 0;
+                          }
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: valorPreenchido,
+                              minHeight: 3,
+                              backgroundColor: AppColors.border,
+                              color: AppColors.primary,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            if (visiveis.length > 1) const SizedBox(height: 14),
+            SizedBox(
+              height: 64,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: visiveis.length,
+                onPageChanged: _aoTrocarPagina,
+                itemBuilder: (context, index) {
+                  final item = visiveis[index];
+                  return _CartaoLancamento(item: item);
+                },
               ),
             ),
-            title: Text(item.titulo, style: TextStyle(color: AppColors.textPrimary)),
-            subtitle: Text(
-              Formatters.data(item.data),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
-            ),
-            trailing: Text(
-              '${item.positivo ? '+' : '-'} ${Formatters.moeda(item.valor)}',
-              style: TextStyle(
-                color: item.positivo ? AppColors.receita : AppColors.despesa,
-                fontWeight: FontWeight.w600,
+            const SizedBox(height: 10),
+            Center(
+              child: Text(
+                'toque duas vezes para ver todos os lançamentos',
+                style: TextStyle(color: AppColors.textDisabled, fontSize: 10.5),
               ),
             ),
-          );
-        }).toList(),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _CartaoLancamento extends StatelessWidget {
+  final _ItemLancamento item;
+  const _CartaoLancamento({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: item.positivo ? AppColors.receitaSoft : AppColors.despesaSoft,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            item.positivo ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            color: item.positivo ? AppColors.receita : AppColors.despesa,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                item.titulo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14.5),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                Formatters.data(item.data),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${item.positivo ? '+' : '-'} ${Formatters.moeda(item.valor)}',
+          style: TextStyle(
+            color: item.positivo ? AppColors.receita : AppColors.despesa,
+            fontWeight: FontWeight.w700,
+            fontSize: 14.5,
+          ),
+        ),
+      ],
     );
   }
 }
