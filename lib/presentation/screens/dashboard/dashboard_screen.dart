@@ -612,6 +612,9 @@ class _GraficoDesempenhoState extends State<_GraficoDesempenho> with SingleTicke
                           opacity: curvaBarra.value,
                           child: Text(
                             dia.receita == 0 ? '—' : _valorCompacto(dia.receita),
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
                             style: TextStyle(
                               color: ehHoje ? AppColors.receita : AppColors.textSecondary,
                               fontSize: 10.5,
@@ -680,8 +683,8 @@ class _GraficoDesempenhoState extends State<_GraficoDesempenho> with SingleTicke
   }
 
   String _valorCompacto(double valor) {
-    if (valor.abs() >= 1000) return 'R\$${(valor / 1000).toStringAsFixed(1)}k';
-    return Formatters.moeda(valor);
+    if (valor.abs() >= 1000) return '${(valor / 1000).toStringAsFixed(1)}k';
+    return valor.round().toString();
   }
 }
 
