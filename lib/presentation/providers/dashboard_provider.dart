@@ -95,7 +95,10 @@ class DashboardProvider extends ChangeNotifier {
       inicio: intervalo.inicio,
       fim: intervalo.fim,
     );
-    quantidadeCorridas = receitasPeriodo.where((r) => r.tipo == TipoReceita.corrida).length;
+    quantidadeCorridas = await _contarCorridasConcluidas(
+      inicio: intervalo.inicio,
+      fim: intervalo.fim,
+    );
 
     final todasReceitas = await _receitaRepository.listar();
     final todasDespesas = await _despesaRepository.listar();
@@ -223,6 +226,27 @@ class DashboardProvider extends ChangeNotifier {
       {'chave': _chaveFiltroLancamentos, 'valor': filtroLancamentos.name},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  /// Conta só corridas concluídas de verdade — cancelada não conta, mesmo
+  /// que tenha gerado uma taxa de cancelamento (que também é um lançamento
+  /// do tipo "corrida", só que não é uma corrida que aconteceu). Por isso
+  /// não dá pra contar pelo tipo do lançamento de receita: precisa
+  /// consultar a própria corrida e checar se ela não foi cancelada e se
+  /// chegou a ser finalizada.
+  Future<int> _contarCorridasConcluidas({required DateTime inicio, required DateTime fim}) async {
+    final db = await _dbHelper.database;
+    final resultado = await db.rawQuery(
+      '''
+      SELECT COUNT(*) AS total FROM corridas
+      WHERE cancelada = 0
+        AND hora_fim IS NOT NULL
+        AND hora_inicio >= ?
+        AND hora_inicio < ?
+      ''',
+      [inicio.toIso8601String(), fim.toIso8601String()],
+    );
+    return Sqflite.firstIntValue(resultado) ?? 0;
   }
 
   Future<List<({DateTime dia, double receita, double lucro})>> _calcularUltimosDias(
