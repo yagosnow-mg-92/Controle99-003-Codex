@@ -58,10 +58,33 @@ class ReceitaRepositoryImpl implements ReceitaRepository {
     );
   }
 
+  /// Excluir uma receita não pode deixar rastro: se ela veio de uma
+  /// corrida ou de um deslocamento livre, a linha correspondente em
+  /// `corridas`/`deslocamentos_livres` (e a trilha de GPS dela) precisa
+  /// sumir junto — sem `FOREIGN KEY ... ON DELETE CASCADE` no banco, isso
+  /// não acontece sozinho. Sem essa limpeza, uma corrida excluída
+  /// continuava contando no indicador "Corridas" do painel (ele consulta
+  /// a tabela `corridas` direto, não a lista de receitas).
   @override
   Future<void> excluir(String id) async {
     final db = await _dbHelper.database;
-    await db.delete('receitas', where: 'id = ?', whereArgs: [id]);
+    final batch = db.batch();
+
+    batch.delete(
+      'pontos_rota',
+      where: 'corrida_id = (SELECT id FROM corridas WHERE receita_id = ?)',
+      whereArgs: [id],
+    );
+    batch.delete(
+      'pontos_rota',
+      where: 'deslocamento_id = (SELECT id FROM deslocamentos_livres WHERE receita_id = ?)',
+      whereArgs: [id],
+    );
+    batch.delete('corridas', where: 'receita_id = ?', whereArgs: [id]);
+    batch.delete('deslocamentos_livres', where: 'receita_id = ?', whereArgs: [id]);
+    batch.delete('receitas', where: 'id = ?', whereArgs: [id]);
+
+    await batch.commit(noResult: true);
   }
 
   Map<String, Object?> _toMap(Receita r) {

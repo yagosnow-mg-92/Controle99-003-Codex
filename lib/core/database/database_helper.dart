@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -160,6 +160,38 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE corridas ADD COLUMN local_embarque_lng REAL');
       await db.execute('ALTER TABLE corridas ADD COLUMN local_destino_lat REAL');
       await db.execute('ALTER TABLE corridas ADD COLUMN local_destino_lng REAL');
+    }
+    if (oldVersion < 9) {
+      // Até aqui, excluir uma receita apagava só a linha da tabela
+      // `receitas` — a corrida ou o deslocamento livre que a originou
+      // ficava pra trás, "fantasma", e o indicador "Corridas" do painel
+      // (que consulta a tabela `corridas` direto, não a lista de
+      // receitas) continuava contando ele. Essa migração limpa qualquer
+      // corrida/deslocamento que tenha sobrado assim de uma exclusão
+      // anterior a essa correção. Dali em diante, `excluir()` já apaga os
+      // dois juntos, então isso não deve voltar a acontecer.
+      await db.execute('''
+        DELETE FROM pontos_rota
+        WHERE corrida_id IN (
+          SELECT id FROM corridas
+          WHERE receita_id IS NOT NULL AND receita_id NOT IN (SELECT id FROM receitas)
+        )
+      ''');
+      await db.execute('''
+        DELETE FROM pontos_rota
+        WHERE deslocamento_id IN (
+          SELECT id FROM deslocamentos_livres
+          WHERE receita_id NOT IN (SELECT id FROM receitas)
+        )
+      ''');
+      await db.execute('''
+        DELETE FROM corridas
+        WHERE receita_id IS NOT NULL AND receita_id NOT IN (SELECT id FROM receitas)
+      ''');
+      await db.execute('''
+        DELETE FROM deslocamentos_livres
+        WHERE receita_id NOT IN (SELECT id FROM receitas)
+      ''');
     }
   }
 
