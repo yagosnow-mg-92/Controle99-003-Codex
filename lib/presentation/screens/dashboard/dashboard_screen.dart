@@ -689,8 +689,8 @@ class _GraficoDesempenhoState extends State<_GraficoDesempenho> with SingleTicke
   }
 
   String _valorCompacto(double valor) {
-    if (valor.abs() >= 1000) return '${(valor / 1000).toStringAsFixed(1)}k';
-    return valor.round().toString();
+    if (valor.abs() >= 1000) return '${(valor / 1000).toStringAsFixed(2)}k';
+    return valor.toStringAsFixed(2).replaceAll('.', ',');
   }
 }
 
