@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../domain/entities/filtro_lancamentos.dart';
 import '../../../domain/entities/ponto_rota.dart';
 import '../../../domain/entities/receita.dart';
 import '../../../domain/repositories/corrida_repository.dart';
@@ -40,6 +39,14 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
   double _valorPorKmPreview = 0;
   String _buscaTexto = '';
   TipoReceita _tipoSelecionado = TipoReceita.outro;
+
+  /// Filtro próprio desta tela — não tem mais relação com o filtro da
+  /// tela inicial (esse é só do painel agora). Por padrão, mostra somente
+  /// os lançamentos de hoje, de qualquer tipo. `_filtroFim` é exclusivo
+  /// (igual ao resto do app): um dia sozinho vira [hoje 00h, amanhã 00h).
+  late DateTime _filtroInicio = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  late DateTime _filtroFim = _filtroInicio.add(const Duration(days: 1));
+  TipoReceita? _filtroTipo;
 
   /// Quando não-nulo, o formulário está mostrando um lançamento já
   /// existente (aberto com duplo toque na lista), em vez de um novo.
@@ -243,6 +250,8 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
                 ),
                 const SizedBox(height: 12),
                 _campoBusca(),
+                const SizedBox(height: 10),
+                _barraFiltro(),
                 const SizedBox(height: 12),
                 _listaLancamentos(provider),
               ],
@@ -656,6 +665,204 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     );
   }
 
+  /// Texto curto pro período filtrado: "Hoje", "31/07" (um dia só) ou
+  /// "31/07 - 03/08" (intervalo).
+  String get _rotuloPeriodoFiltro {
+    final hoje = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final umDiaSo = _filtroFim.difference(_filtroInicio).inDays == 1;
+    if (umDiaSo && _filtroInicio == hoje) return 'Hoje';
+    if (umDiaSo) return Formatters.data(_filtroInicio);
+    final ultimoDia = _filtroFim.subtract(const Duration(days: 1));
+    return '${Formatters.data(_filtroInicio)} - ${Formatters.data(ultimoDia)}';
+  }
+
+  Widget _barraFiltro() {
+    return Row(
+      children: [
+        Expanded(
+          child: _chipFiltro(
+            icone: Icons.calendar_today_rounded,
+            texto: _rotuloPeriodoFiltro,
+            onTap: _abrirFiltro,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _chipFiltro(
+            icone: Icons.filter_list_rounded,
+            texto: _filtroTipo?.descricao ?? 'Todos os tipos',
+            onTap: _abrirFiltro,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chipFiltro({required IconData icone, required String texto, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icone, color: AppColors.primary, size: 16),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                texto,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirFiltro() async {
+    DateTime inicioTemp = _filtroInicio;
+    DateTime fimTemp = _filtroFim;
+    TipoReceita? tipoTemp = _filtroTipo;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Filtrar lançamentos',
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Período', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Hoje'),
+                        selected: false,
+                        onSelected: (_) {
+                          final hoje = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+                          setModalState(() {
+                            inicioTemp = hoje;
+                            fimTemp = hoje.add(const Duration(days: 1));
+                          });
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Ontem'),
+                        selected: false,
+                        onSelected: (_) {
+                          final hoje = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+                          final ontem = hoje.subtract(const Duration(days: 1));
+                          setModalState(() {
+                            inicioTemp = ontem;
+                            fimTemp = hoje;
+                          });
+                        },
+                      ),
+                      ActionChip(
+                        avatar: Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
+                        label: const Text('Escolher intervalo'),
+                        onPressed: () async {
+                          final hoje = DateTime.now();
+                          final intervalo = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime(hoje.year - 3),
+                            lastDate: hoje,
+                            initialDateRange: DateTimeRange(
+                              start: inicioTemp,
+                              end: fimTemp.subtract(const Duration(days: 1)),
+                            ),
+                          );
+                          if (intervalo != null) {
+                            setModalState(() {
+                              inicioTemp = DateTime(intervalo.start.year, intervalo.start.month, intervalo.start.day);
+                              fimTemp = DateTime(intervalo.end.year, intervalo.end.month, intervalo.end.day)
+                                  .add(const Duration(days: 1));
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Builder(builder: (context) {
+                      final umDiaSo = fimTemp.difference(inicioTemp).inDays == 1;
+                      final ultimoDia = fimTemp.subtract(const Duration(days: 1));
+                      final texto = umDiaSo
+                          ? Formatters.data(inicioTemp)
+                          : '${Formatters.data(inicioTemp)} até ${Formatters.data(ultimoDia)}';
+                      return Text(texto, style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5));
+                    }),
+                  ),
+                  const SizedBox(height: 22),
+                  Text('Tipo', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Todos'),
+                        selected: tipoTemp == null,
+                        onSelected: (_) => setModalState(() => tipoTemp = null),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Corrida'),
+                        selected: tipoTemp == TipoReceita.corrida,
+                        onSelected: (_) => setModalState(() => tipoTemp = TipoReceita.corrida),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Deslocamento livre'),
+                        selected: tipoTemp == TipoReceita.deslocamentoLivre,
+                        onSelected: (_) => setModalState(() => tipoTemp = TipoReceita.deslocamentoLivre),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _filtroInicio = inicioTemp;
+                          _filtroFim = fimTemp;
+                          _filtroTipo = tipoTemp;
+                        });
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Aplicar filtro'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _listaLancamentos(ReceitaProvider provider) {
     if (provider.carregando) {
       return Padding(
@@ -664,14 +871,15 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
       );
     }
 
-    final filtroLancamentos = context.watch<DashboardProvider>().filtroLancamentos;
-    final lancamentosDoFiltroGlobal = provider.lancamentos.where((r) {
-      return filtroLancamentos == FiltroLancamentos.todos || r.tipo == TipoReceita.corrida;
+    final lancamentosDoFiltro = provider.lancamentos.where((r) {
+      final dentroDoPeriodo = !r.data.isBefore(_filtroInicio) && r.data.isBefore(_filtroFim);
+      final tipoBate = _filtroTipo == null || r.tipo == _filtroTipo;
+      return dentroDoPeriodo && tipoBate;
     });
     final busca = _buscaTexto.trim().toLowerCase();
     final lancamentosFiltrados = busca.isEmpty
-        ? lancamentosDoFiltroGlobal.toList()
-        : lancamentosDoFiltroGlobal.where((r) {
+        ? lancamentosDoFiltro.toList()
+        : lancamentosDoFiltro.where((r) {
             return r.valorRecebido.toString().contains(busca) ||
                 r.kmRodados.toString().contains(busca) ||
                 (r.observacao ?? '').toLowerCase().contains(busca) ||
@@ -689,10 +897,9 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
         ),
         child: Text(
           busca.isEmpty
-              ? filtroLancamentos == FiltroLancamentos.somenteCorridas
-                  ? 'Nenhuma corrida lançada ainda'
-                  : 'Nenhuma receita lançada ainda'
-              : 'Nenhum resultado para "$_buscaTexto"',
+              ? 'Nenhum lançamento em "$_rotuloPeriodoFiltro"'
+              : 'Nenhum resultado para "$_buscaTexto" em "$_rotuloPeriodoFiltro"',
+          textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textSecondary),
         ),
       );
