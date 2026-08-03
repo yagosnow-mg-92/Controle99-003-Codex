@@ -182,6 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       await provider.mudarFiltroLancamentos(opcao);
                     },
                   ),
+                const SizedBox(height: 8),
               ],
             ),
               ),

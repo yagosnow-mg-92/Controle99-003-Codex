@@ -677,33 +677,13 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
   }
 
   Widget _barraFiltro() {
-    return Row(
-      children: [
-        Expanded(
-          child: _chipFiltro(
-            icone: Icons.calendar_today_rounded,
-            texto: _rotuloPeriodoFiltro,
-            onTap: _abrirFiltro,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _chipFiltro(
-            icone: Icons.filter_list_rounded,
-            texto: _filtroTipo?.descricao ?? 'Todos os tipos',
-            onTap: _abrirFiltro,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _chipFiltro({required IconData icone, required String texto, required VoidCallback onTap}) {
+    final descricaoTipo = _filtroTipo?.descricao ?? 'Todos os tipos';
     return InkWell(
-      onTap: onTap,
+      onTap: _abrirFiltro,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(12),
@@ -711,16 +691,17 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
         ),
         child: Row(
           children: [
-            Icon(icone, color: AppColors.primary, size: 16),
-            const SizedBox(width: 6),
+            Icon(Icons.filter_list_rounded, color: AppColors.primary, size: 18),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                texto,
+                '$_rotuloPeriodoFiltro · $descricaoTipo',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 12.5, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
+            Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 18),
           ],
         ),
       ),
@@ -740,7 +721,12 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 20,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
