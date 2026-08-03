@@ -715,6 +715,7 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
     await showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return StatefulBuilder(
@@ -724,124 +725,130 @@ class _ReceitaScreenState extends State<ReceitaScreen> {
             final ehHoje = inicioTemp == hoje && fimTemp == hoje.add(const Duration(days: 1));
             final ehOntem = inicioTemp == ontem && fimTemp == hoje;
 
-            // O SafeArea (não um cálculo manual de padding) é o que garante
-            // que o botão "Aplicar filtro" fique acima da barra de
-            // navegação do sistema — é o mesmo recurso que já funciona no
-            // filtro da tela inicial.
+            // SafeArea sozinho não é suficiente em todo aparelho (alguns
+            // Android com barra de navegação por gesto relatam a área
+            // segura errado pro Flutter). Por isso o conteúdo também é
+            // rolável, com altura máxima limitada — mesmo que o botão nasça
+            // atrás da barra do sistema, dá pra rolar até ele.
             return SafeArea(
               top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Filtrar lançamentos',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 20),
-                    Text('Período', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ChoiceChip(
-                          label: const Text('Hoje'),
-                          selected: ehHoje,
-                          onSelected: (_) {
-                            setModalState(() {
-                              inicioTemp = hoje;
-                              fimTemp = hoje.add(const Duration(days: 1));
-                            });
-                          },
+                        Text(
+                          'Filtrar lançamentos',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
                         ),
-                        ChoiceChip(
-                          label: const Text('Ontem'),
-                          selected: ehOntem,
-                          onSelected: (_) {
-                            setModalState(() {
-                              inicioTemp = ontem;
-                              fimTemp = hoje;
-                            });
-                          },
+                        const SizedBox(height: 20),
+                        Text('Período', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('Hoje'),
+                              selected: ehHoje,
+                              onSelected: (_) {
+                                setModalState(() {
+                                  inicioTemp = hoje;
+                                  fimTemp = hoje.add(const Duration(days: 1));
+                                });
+                              },
+                            ),
+                            ChoiceChip(
+                              label: const Text('Ontem'),
+                              selected: ehOntem,
+                              onSelected: (_) {
+                                setModalState(() {
+                                  inicioTemp = ontem;
+                                  fimTemp = hoje;
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              avatar: Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
+                              label: const Text('Escolher intervalo'),
+                              onPressed: () async {
+                                final intervalo = await showDateRangePicker(
+                                  context: context,
+                                  firstDate: DateTime(hoje.year - 3),
+                                  lastDate: hoje,
+                                  initialDateRange: DateTimeRange(
+                                    start: inicioTemp,
+                                    end: fimTemp.subtract(const Duration(days: 1)),
+                                  ),
+                                );
+                                if (intervalo != null) {
+                                  setModalState(() {
+                                    inicioTemp = DateTime(intervalo.start.year, intervalo.start.month, intervalo.start.day);
+                                    fimTemp = DateTime(intervalo.end.year, intervalo.end.month, intervalo.end.day)
+                                        .add(const Duration(days: 1));
+                                  });
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                        ActionChip(
-                          avatar: Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
-                          label: const Text('Escolher intervalo'),
-                          onPressed: () async {
-                            final intervalo = await showDateRangePicker(
-                              context: context,
-                              firstDate: DateTime(hoje.year - 3),
-                              lastDate: hoje,
-                              initialDateRange: DateTimeRange(
-                                start: inicioTemp,
-                                end: fimTemp.subtract(const Duration(days: 1)),
-                              ),
-                            );
-                            if (intervalo != null) {
-                              setModalState(() {
-                                inicioTemp = DateTime(intervalo.start.year, intervalo.start.month, intervalo.start.day);
-                                fimTemp = DateTime(intervalo.end.year, intervalo.end.month, intervalo.end.day)
-                                    .add(const Duration(days: 1));
+                        const SizedBox(height: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Builder(builder: (context) {
+                            final umDiaSo = fimTemp.difference(inicioTemp).inDays == 1;
+                            final ultimoDia = fimTemp.subtract(const Duration(days: 1));
+                            final texto = umDiaSo
+                                ? Formatters.data(inicioTemp)
+                                : '${Formatters.data(inicioTemp)} até ${Formatters.data(ultimoDia)}';
+                            return Text(texto, style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5));
+                          }),
+                        ),
+                        const SizedBox(height: 22),
+                        Text('Tipo', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('Todos'),
+                              selected: tipoTemp == null,
+                              onSelected: (_) => setModalState(() => tipoTemp = null),
+                            ),
+                            ChoiceChip(
+                              label: const Text('Corrida'),
+                              selected: tipoTemp == TipoReceita.corrida,
+                              onSelected: (_) => setModalState(() => tipoTemp = TipoReceita.corrida),
+                            ),
+                            ChoiceChip(
+                              label: const Text('Deslocamento livre'),
+                              selected: tipoTemp == TipoReceita.deslocamentoLivre,
+                              onSelected: (_) => setModalState(() => tipoTemp = TipoReceita.deslocamentoLivre),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _filtroInicio = inicioTemp;
+                                _filtroFim = fimTemp;
+                                _filtroTipo = tipoTemp;
                               });
-                            }
-                          },
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('Aplicar filtro'),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Builder(builder: (context) {
-                        final umDiaSo = fimTemp.difference(inicioTemp).inDays == 1;
-                        final ultimoDia = fimTemp.subtract(const Duration(days: 1));
-                        final texto = umDiaSo
-                            ? Formatters.data(inicioTemp)
-                            : '${Formatters.data(inicioTemp)} até ${Formatters.data(ultimoDia)}';
-                        return Text(texto, style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5));
-                      }),
-                    ),
-                    const SizedBox(height: 22),
-                    Text('Tipo', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Todos'),
-                          selected: tipoTemp == null,
-                          onSelected: (_) => setModalState(() => tipoTemp = null),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Corrida'),
-                          selected: tipoTemp == TipoReceita.corrida,
-                          onSelected: (_) => setModalState(() => tipoTemp = TipoReceita.corrida),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Deslocamento livre'),
-                          selected: tipoTemp == TipoReceita.deslocamentoLivre,
-                          onSelected: (_) => setModalState(() => tipoTemp = TipoReceita.deslocamentoLivre),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _filtroInicio = inicioTemp;
-                            _filtroFim = fimTemp;
-                            _filtroTipo = tipoTemp;
-                          });
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('Aplicar filtro'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );
